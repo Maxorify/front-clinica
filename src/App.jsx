@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Routes, Route } from 'react-router-dom'; 
 import Login from './pages/login/Login'
+import Layout from './components/layout/Layout'
+import LayoutDoctor from './components/layout/LayoutDoctor'
+import LayoutSecretaria from './components/layout/LayoutSecretaria'
 import './App.css'
 
 function App() {
@@ -8,9 +11,21 @@ function App() {
   
   return (
     <Routes>
-      <Route path="/" element={<h1>Hello, World!</h1>} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/" element={<Login/>} />
+      <Route element= {<Layout/>}>
+      {/* Rutas protegidas aquí para admin */}
+        
+      </Route>
+
+      <Route element= {<LayoutDoctor/>}>
+      {/* Rutas protegidas aquí para doctor */}
+      </Route>
+
+      <Route element= {<LayoutSecretaria/>}>
+      {/* Rutas protegidas aquí para Secretaria */}
+      </Route>
     </Routes>
+    
   )
 }
 
