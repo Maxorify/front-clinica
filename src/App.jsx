@@ -21,6 +21,7 @@ import DashboardDoctor from './pages/doctor/DashboardDoctor';
 import CitasDoctor from './pages/doctor/CitasDoctor';
 
 // Secretaria Pages
+import CheckingPacientes from './pages/secretaria/checkingPacientes';
 
 import './App.css'
 
@@ -53,11 +54,11 @@ function App() {
           /*
         <Route path="/secretaria/dashboard" element={<DashboardSecretaria />} />
         <Route path="/secretaria/agendar-cita" element={<AgendarCita />} />
-        <Route path="/secretaria/checking-pacientes" element={<CheckingPacientes />} />
         <Route path="/secretaria/caja-pagos" element={<CajaPagos />} />
         <Route path="/secretaria/editar-perfil" element={<EditarPerfil />} />*/
 
       }
+        <Route path="/secretaria/checking-pacientes" element={<CheckingPacientes />} />
       </Route>
     </Routes>
   )
