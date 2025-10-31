@@ -6,9 +6,9 @@ export default function CheckingPacientes() {
   const pacientesEspera = [
     {
       id: 1,
-      nombre: 'María González',
+      nombre: 'MarÃ­a GonzÃ¡lez',
       cedula: '1234567890',
-      doctor: 'Dr. García',
+      doctor: 'Dr. GarcÃ­a',
       horaCita: '09:00',
       horaLlegada: '08:55',
       estado: 'En espera',
@@ -16,9 +16,9 @@ export default function CheckingPacientes() {
     },
     {
       id: 2,
-      nombre: 'Juan Pérez',
+      nombre: 'Juan PÃ©rez',
       cedula: '0987654321',
-      doctor: 'Dra. Martínez',
+      doctor: 'Dra. MartÃ­nez',
       horaCita: '09:30',
       horaLlegada: '09:25',
       estado: 'En espera',
@@ -26,9 +26,9 @@ export default function CheckingPacientes() {
     },
     {
       id: 3,
-      nombre: 'Ana López',
+      nombre: 'Ana LÃ³pez',
       cedula: '1122334455',
-      doctor: 'Dr. García',
+      doctor: 'Dr. GarcÃ­a',
       horaCita: '10:00',
       horaLlegada: '09:50',
       estado: 'En consulta',
@@ -38,7 +38,7 @@ export default function CheckingPacientes() {
       id: 4,
       nombre: 'Carlos Ruiz',
       cedula: '5544332211',
-      doctor: 'Dr. Rodríguez',
+      doctor: 'Dr. RodrÃ­guez',
       horaCita: '10:30',
       horaLlegada: '10:15',
       estado: 'En espera',
@@ -105,7 +105,7 @@ export default function CheckingPacientes() {
         <div className="relative">
           <input
             type="text"
-            placeholder="Buscar por nombre, cédula o doctor..."
+            placeholder="Buscar por nombre, cÃ©dula o doctor..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-4 py-3 pl-12 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 dark:text-white"
@@ -207,7 +207,7 @@ export default function CheckingPacientes() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No hay pacientes en espera</h3>
-          <p className="text-gray-600 dark:text-gray-400">No se encontraron pacientes con los criterios de búsqueda</p>
+          <p className="text-gray-600 dark:text-gray-400">No se encontraron pacientes con los criterios de bÃºsqueda</p>
         </div>
       )}
     </div>
