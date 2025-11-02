@@ -21,6 +21,10 @@ import DashboardDoctor from './pages/doctor/DashboardDoctor';
 import CitasDoctor from './pages/doctor/CitasDoctor';
 
 // Secretaria Pages
+import DashboardSecretaria from './pages/secretaria/dashboardSecretaria';
+import AgendarCita from './pages/secretaria/agendarCita';
+import CajaPagos from './pages/secretaria/cajaPagos';
+import EditarPerfil from './pages/secretaria/editarPerfil';
 import CheckingPacientes from './pages/secretaria/checkingPacientes';
 
 import './App.css'
@@ -50,14 +54,10 @@ function App() {
 
       {/* Rutas Secretaria */}
       <Route element={<LayoutSecretaria/>}>
-      {
-          /*
         <Route path="/secretaria/dashboard" element={<DashboardSecretaria />} />
         <Route path="/secretaria/agendar-cita" element={<AgendarCita />} />
         <Route path="/secretaria/caja-pagos" element={<CajaPagos />} />
-        <Route path="/secretaria/editar-perfil" element={<EditarPerfil />} />*/
-
-      }
+        <Route path="/secretaria/editar-perfil" element={<EditarPerfil />} />
         <Route path="/secretaria/checking-pacientes" element={<CheckingPacientes />} />
       </Route>
     </Routes>
