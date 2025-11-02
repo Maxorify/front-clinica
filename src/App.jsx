@@ -19,6 +19,9 @@ import AjustesSistema from './pages/admin/ajustesSistema';
 // Doctor Pages
 import DashboardDoctor from './pages/doctor/DashboardDoctor';
 import CitasDoctor from './pages/doctor/CitasDoctor';
+import PacientesDoctor from './pages/doctor/pacientes';
+import HistoriaMedica from './pages/doctor/historiaMedica';
+import MiPerfil from './pages/doctor/miPerfil';
 
 // Secretaria Pages
 import DashboardSecretaria from './pages/secretaria/dashboardSecretaria';
@@ -50,6 +53,9 @@ function App() {
       <Route element={<LayoutDoctor/>}>
         <Route path="/doctor/dashboard" element={<DashboardDoctor />} />
         <Route path="/doctor/citas" element={<CitasDoctor />} />
+        <Route path="/doctor/pacientes" element={<PacientesDoctor />} />
+        <Route path="/doctor/historial" element={<HistoriaMedica />} />
+        <Route path="/doctor/perfil" element={<MiPerfil />} />
       </Route>
 
       {/* Rutas Secretaria */}
