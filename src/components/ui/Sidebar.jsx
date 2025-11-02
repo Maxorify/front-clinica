@@ -1,7 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
+import { logout } from '../../utils/auth';
 
 export default function Sidebar({ isOpen, setIsOpen, darkMode, setDarkMode }) {
   const location = useLocation();
+
+  const handleLogout = () => {
+    logout();
+  };
 
   const menuItems = [
     {
@@ -155,15 +160,15 @@ export default function Sidebar({ isOpen, setIsOpen, darkMode, setDarkMode }) {
               <span className="font-medium">{darkMode ? 'Modo Claro' : 'Modo Oscuro'}</span>
             </button>
 
-            <Link
-              to="/"
+            <button
+              onClick={handleLogout}
               className="flex items-center gap-3 w-full px-4 py-3 mt-2 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 transform hover:scale-105"
             >
               <svg className="w-6 h-6 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
               <span className="font-medium">Cerrar Sesión</span>
-            </Link>
+            </button>
           </div>
         </div>
       </aside>
