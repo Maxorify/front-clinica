@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import Login from './pages/login/Login'
+import ProtectedRoute from './components/ProtectedRoute'
 
 // Layouts
 import Layout from './components/layout/Layout'
@@ -38,7 +39,7 @@ function App() {
       <Route path="/" element={<Login/>} />
 
       {/* Rutas Admin */}
-      <Route element={<Layout/>}>
+      <Route element={<ProtectedRoute allowedRoles={['admin']}><Layout/></ProtectedRoute>}>
         <Route path="/admin/dashboard" element={<Dashboard />} />
         <Route path="/admin/agendamiento-consultas" element={<AgendamientoConsultas />} />
         <Route path="/admin/doctores" element={<Doctores />} />
@@ -50,7 +51,7 @@ function App() {
       </Route>
 
       {/* Rutas Doctor */}
-      <Route element={<LayoutDoctor/>}>
+      <Route element={<ProtectedRoute allowedRoles={['medico']}><LayoutDoctor/></ProtectedRoute>}>
         <Route path="/doctor/dashboard" element={<DashboardDoctor />} />
         <Route path="/doctor/citas" element={<CitasDoctor />} />
         <Route path="/doctor/pacientes" element={<PacientesDoctor />} />
@@ -59,7 +60,7 @@ function App() {
       </Route>
 
       {/* Rutas Secretaria */}
-      <Route element={<LayoutSecretaria/>}>
+      <Route element={<ProtectedRoute allowedRoles={['secretaria']}><LayoutSecretaria/></ProtectedRoute>}>
         <Route path="/secretaria/dashboard" element={<DashboardSecretaria />} />
         <Route path="/secretaria/agendar-cita" element={<AgendarCita />} />
         <Route path="/secretaria/caja-pagos" element={<CajaPagos />} />

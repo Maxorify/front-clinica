@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { TextField, Button, InputAdornment, IconButton } from "@mui/material";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import EmailIcon from "@mui/icons-material/Email";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
@@ -32,6 +33,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -39,16 +41,38 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      // Aquí irá tu lógica de autenticación
-      console.log("Login:", { email, password });
-      
-      // Simula un delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setEmail("");
-      setPassword("");
+      const response = await fetch("http://localhost:5000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setFormError(data.detail || "Error al iniciar sesión");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (data.success && data.data) {
+        // Guardar información del usuario en localStorage
+        localStorage.setItem("user", JSON.stringify(data.data));
+        localStorage.setItem("auth_token", data.data.auth_token || "");
+
+        // Redirigir según el rol usando la URL que envía el backend
+        if (data.redirect_url) {
+          navigate(data.redirect_url);
+        }
+      }
     } catch (error) {
-      setFormError("Credenciales inválidas o usuario inactivo");
+      console.error("Error en login:", error);
+      setFormError("Error de conexión con el servidor");
     } finally {
       setIsSubmitting(false);
     }
