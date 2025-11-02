@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TextField, Button, InputAdornment, IconButton } from "@mui/material";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -8,6 +8,7 @@ import EmailIcon from "@mui/icons-material/Email";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import fondo from "../../assets/fondo.jpg";
+import { getCurrentUser } from "../../utils/auth";
 
 const loginTheme = createTheme({
   palette: {
@@ -34,6 +35,26 @@ export default function Login() {
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+
+  // Verificar si el usuario ya está autenticado al cargar el componente
+  useEffect(() => {
+    const user = getCurrentUser();
+    const token = localStorage.getItem('auth_token');
+
+    if (user && token && user.rol_nombre) {
+      // Usuario ya autenticado, redirigir a su dashboard
+      const dashboardRoutes = {
+        'admin': '/admin/dashboard',
+        'medico': '/doctor/dashboard',
+        'secretaria': '/secretaria/dashboard'
+      };
+
+      const redirectUrl = dashboardRoutes[user.rol_nombre];
+      if (redirectUrl) {
+        navigate(redirectUrl, { replace: true });
+      }
+    }
+  }, [navigate]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
