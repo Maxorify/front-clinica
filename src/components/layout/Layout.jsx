@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Sidebar from '../ui/Sidebar';
 import PageTransition from '../PageTransition';
+import { getCurrentUser } from '../../utils/auth';
 
 export default function Layout() {
   // Leer el modo oscuro desde localStorage, por defecto true
@@ -11,7 +12,14 @@ export default function Layout() {
     return saved !== null ? JSON.parse(saved) : true;
   });
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
   const location = useLocation();
+
+  // Obtener información del usuario actual
+  useEffect(() => {
+    const user = getCurrentUser();
+    setCurrentUser(user);
+  }, []);
 
   // Guardar en localStorage cuando cambie el modo oscuro
   useEffect(() => {
@@ -51,22 +59,19 @@ export default function Layout() {
                 </button>
 
                 <div className="flex items-center gap-4">
-                  <button className="relative p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                  </button>
-
                   <div className="flex items-center gap-3">
                     <img
-                      src="https://ui-avatars.com/api/?name=Admin&background=3b82f6&color=fff"
+                      src={currentUser ? `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.nombre || 'Admin')}&background=3b82f6&color=fff` : "https://ui-avatars.com/api/?name=Admin&background=3b82f6&color=fff"}
                       alt="Avatar"
                       className="w-10 h-10 rounded-full"
                     />
                     <div className="hidden md:block">
-                      <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Administrador</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">admin@clinica.com</p>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        {currentUser?.nombre || 'Administrador'}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {currentUser?.email || 'admin@clinica.com'}
+                      </p>
                     </div>
                   </div>
                 </div>
