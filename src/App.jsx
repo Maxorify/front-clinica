@@ -18,6 +18,7 @@ import Especialidades from './pages/admin/especialidades';
 import AsignarHorarios from './pages/admin/asignarHorarios';
 import RegistroAsistencia from './pages/admin/registroAsistencia';
 import AjustesSistema from './pages/admin/ajustesSistema';
+import Asistencia from './pages/admin/asistencia';
 
 // Doctor Pages
 import DashboardDoctor from './pages/doctor/DashboardDoctor';
@@ -53,6 +54,7 @@ function App() {
         <Route path="/admin/especialidades" element={<Especialidades />} />
         <Route path="/admin/asignar-horarios" element={<AsignarHorarios />} />
         <Route path="/admin/registro-asistencia" element={<RegistroAsistencia />} />
+        <Route path="/admin/asistencia" element={<Asistencia />} />
         <Route path="/admin/ajustes-sistema" element={<AjustesSistema />} />
       </Route>
 
