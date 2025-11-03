@@ -1,14 +1,15 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function UsuariosSistema() {
   const [showModal, setShowModal] = useState(false);
 
   const usuarios = [
     { id: 1, nombre: 'Admin Principal', email: 'admin@clinica.com', rol: 'Administrador', estado: 'Activo', ultimoAcceso: '2024-10-31 08:30' },
-    { id: 2, nombre: 'Dr. García', email: 'garcia@clinica.com', rol: 'Doctor', estado: 'Activo', ultimoAcceso: '2024-10-31 07:15' },
-    { id: 3, nombre: 'Dra. Martínez', email: 'martinez@clinica.com', rol: 'Doctor', estado: 'Activo', ultimoAcceso: '2024-10-30 18:45' },
-    { id: 4, nombre: 'María Secretaria', email: 'maria@clinica.com', rol: 'Secretaria', estado: 'Activo', ultimoAcceso: '2024-10-31 06:00' },
-    { id: 5, nombre: 'Juan Recepción', email: 'juan@clinica.com', rol: 'Secretaria', estado: 'Inactivo', ultimoAcceso: '2024-10-25 15:20' },
+    { id: 2, nombre: 'Dr. Garcï¿½a', email: 'garcia@clinica.com', rol: 'Doctor', estado: 'Activo', ultimoAcceso: '2024-10-31 07:15' },
+    { id: 3, nombre: 'Dra. Martï¿½nez', email: 'martinez@clinica.com', rol: 'Doctor', estado: 'Activo', ultimoAcceso: '2024-10-30 18:45' },
+    { id: 4, nombre: 'Marï¿½a Secretaria', email: 'maria@clinica.com', rol: 'Secretaria', estado: 'Activo', ultimoAcceso: '2024-10-31 06:00' },
+    { id: 5, nombre: 'Juan Recepciï¿½n', email: 'juan@clinica.com', rol: 'Secretaria', estado: 'Inactivo', ultimoAcceso: '2024-10-25 15:20' },
   ];
 
   const getRolBadge = (rol) => {
@@ -26,7 +27,7 @@ export default function UsuariosSistema() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Usuarios del Sistema</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Gestión de usuarios y permisos</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Gestiï¿½n de usuarios y permisos</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -64,7 +65,7 @@ export default function UsuariosSistema() {
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Usuario</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Rol</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Último Acceso</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ï¿½ltimo Acceso</th>
                 <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
@@ -115,9 +116,16 @@ export default function UsuariosSistema() {
       </div>
 
       {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full">
+      <AnimatePresence>
+        {showModal && (
+          <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full"
+            >
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Nuevo Usuario</h2>
             </div>
@@ -132,7 +140,7 @@ export default function UsuariosSistema() {
                   <input type="email" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Contraseña</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Contraseï¿½a</label>
                   <input type="password" className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white" />
                 </div>
                 <div>
@@ -156,9 +164,10 @@ export default function UsuariosSistema() {
                 Guardar
               </button>
             </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

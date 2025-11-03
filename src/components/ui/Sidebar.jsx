@@ -88,8 +88,8 @@ export default function Sidebar({ isOpen, setIsOpen, darkMode, setDarkMode }) {
     <>
       {/* Overlay para móvil */}
       <div
-        className={`fixed inset-0 bg-black z-20 lg:hidden transition-all duration-300 ${
-          isOpen ? 'bg-opacity-50 visible' : 'bg-opacity-0 invisible'
+        className={`fixed inset-0 z-20 lg:hidden transition-all duration-300 ${
+          isOpen ? 'bg-gray-900/20 backdrop-blur-sm visible' : 'bg-transparent invisible'
         }`}
         onClick={() => setIsOpen(false)}
       />

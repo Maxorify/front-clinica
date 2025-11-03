@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CajaPagos() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,20 +16,20 @@ export default function CajaPagos() {
   const [pagosHoy] = useState([
     {
       id: 1,
-      paciente: 'María González',
+      paciente: 'Marï¿½a Gonzï¿½lez',
       cedula: '1234567890',
       servicio: 'Consulta General',
-      doctor: 'Dr. García',
+      doctor: 'Dr. Garcï¿½a',
       monto: 50,
       estado: 'Pendiente',
       hora: '09:00'
     },
     {
       id: 2,
-      paciente: 'Juan Pérez',
+      paciente: 'Juan Pï¿½rez',
       cedula: '0987654321',
       servicio: 'Consulta Especializada',
-      doctor: 'Dra. Martínez',
+      doctor: 'Dra. Martï¿½nez',
       monto: 80,
       estado: 'Pagado',
       hora: '09:30',
@@ -36,10 +37,10 @@ export default function CajaPagos() {
     },
     {
       id: 3,
-      paciente: 'Ana López',
+      paciente: 'Ana Lï¿½pez',
       cedula: '1122334455',
       servicio: 'Control',
-      doctor: 'Dr. García',
+      doctor: 'Dr. Garcï¿½a',
       monto: 40,
       estado: 'Pagado',
       hora: '10:00',
@@ -50,7 +51,7 @@ export default function CajaPagos() {
       paciente: 'Carlos Ruiz',
       cedula: '5544332211',
       servicio: 'Consulta General',
-      doctor: 'Dr. Rodríguez',
+      doctor: 'Dr. Rodrï¿½guez',
       monto: 50,
       estado: 'Pendiente',
       hora: '10:30'
@@ -104,7 +105,7 @@ export default function CajaPagos() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Caja de Pagos</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Gestión de pagos y cobros</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Gestiï¿½n de pagos y cobros</p>
       </div>
 
       {/* Stats */}
@@ -139,7 +140,7 @@ export default function CajaPagos() {
         <div className="relative">
           <input
             type="text"
-            placeholder="Buscar por paciente, cédula o servicio..."
+            placeholder="Buscar por paciente, cï¿½dula o servicio..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-4 py-3 pl-12 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 dark:text-white"
@@ -168,7 +169,7 @@ export default function CajaPagos() {
                   Paciente
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                  Cédula
+                  Cï¿½dula
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   Servicio
@@ -239,15 +240,22 @@ export default function CajaPagos() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No hay pagos registrados</h3>
-            <p className="text-gray-600 dark:text-gray-400">No se encontraron pagos con los criterios de búsqueda</p>
+            <p className="text-gray-600 dark:text-gray-400">No se encontraron pagos con los criterios de bï¿½squeda</p>
           </div>
         )}
       </div>
 
       {/* Payment Modal */}
-      {showPaymentModal && selectedPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <AnimatePresence>
+        {showPaymentModal && selectedPayment && (
+          <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            >
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Procesar Pago</h2>
@@ -282,7 +290,7 @@ export default function CajaPagos() {
               {/* Payment Method */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Método de Pago
+                  Mï¿½todo de Pago
                 </label>
                 <select
                   value={paymentForm.metodoPago}
@@ -290,7 +298,7 @@ export default function CajaPagos() {
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 dark:text-white"
                 >
                   <option value="Efectivo">Efectivo</option>
-                  <option value="Tarjeta">Tarjeta de Crédito/Débito</option>
+                  <option value="Tarjeta">Tarjeta de Crï¿½dito/Dï¿½bito</option>
                   <option value="Transferencia">Transferencia Bancaria</option>
                   <option value="Cheque">Cheque</option>
                 </select>
@@ -370,9 +378,10 @@ export default function CajaPagos() {
                 </button>
               </div>
             </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

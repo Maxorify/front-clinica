@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import SidebarDoctor from '../ui/SidebarDoctor';
+import PageTransition from '../PageTransition';
 
 export default function LayoutDoctor() {
   const [darkMode, setDarkMode] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const location = useLocation();
 
   return (
     <div className={darkMode ? 'dark' : ''}>
@@ -58,7 +61,11 @@ export default function LayoutDoctor() {
 
           {/* Main Content Area */}
           <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8">
-            <Outlet />
+            <AnimatePresence mode="wait">
+              <PageTransition key={location.pathname}>
+                <Outlet />
+              </PageTransition>
+            </AnimatePresence>
           </main>
         </div>
       </div>

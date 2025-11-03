@@ -1,18 +1,19 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function EditarPerfil() {
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
-    nombre: 'Ana María Rodríguez',
+    nombre: 'Ana Marï¿½a Rodrï¿½guez',
     cedula: '1234567890',
     email: 'ana.rodriguez@clinica.com',
     telefono: '0987654321',
     direccion: 'Av. Principal #123, Quito',
     fechaNacimiento: '1990-05-15',
     cargo: 'Secretaria',
-    departamento: 'Recepción',
+    departamento: 'Recepciï¿½n',
     fechaIngreso: '2020-01-15',
-    turno: 'Mañana'
+    turno: 'Maï¿½ana'
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -49,11 +50,11 @@ export default function EditarPerfil() {
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert('Las contraseñas no coinciden');
+      alert('Las contraseï¿½as no coinciden');
       return;
     }
-    console.log('Cambiando contraseña');
-    alert('Contraseña cambiada exitosamente');
+    console.log('Cambiando contraseï¿½a');
+    alert('Contraseï¿½a cambiada exitosamente');
     setShowPasswordModal(false);
     setPasswordForm({
       currentPassword: '',
@@ -64,7 +65,7 @@ export default function EditarPerfil() {
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Aquí podrías restaurar los datos originales si los tienes guardados
+    // Aquï¿½ podrï¿½as restaurar los datos originales si los tienes guardados
   };
 
   return (
@@ -73,7 +74,7 @@ export default function EditarPerfil() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Mi Perfil</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Gestiona tu información personal</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Gestiona tu informaciï¿½n personal</p>
         </div>
         {!isEditing && (
           <button
@@ -122,7 +123,7 @@ export default function EditarPerfil() {
             <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
-            Información Personal
+            Informaciï¿½n Personal
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -146,7 +147,7 @@ export default function EditarPerfil() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Cédula de Identidad
+                Cï¿½dula de Identidad
               </label>
               <input
                 type="text"
@@ -178,7 +179,7 @@ export default function EditarPerfil() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Teléfono
+                Telï¿½fono
               </label>
               <input
                 type="tel"
@@ -214,7 +215,7 @@ export default function EditarPerfil() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Dirección
+                Direcciï¿½n
               </label>
               <input
                 type="text"
@@ -238,7 +239,7 @@ export default function EditarPerfil() {
             <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
-            Información Laboral
+            Informaciï¿½n Laboral
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -308,15 +309,15 @@ export default function EditarPerfil() {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">Contraseña</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Última actualización: hace 2 meses</p>
+                <h3 className="font-semibold text-gray-900 dark:text-white">Contraseï¿½a</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">ï¿½ltima actualizaciï¿½n: hace 2 meses</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowPasswordModal(true)}
                 className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors font-medium"
               >
-                Cambiar Contraseña
+                Cambiar Contraseï¿½a
               </button>
             </div>
           </div>
@@ -346,12 +347,19 @@ export default function EditarPerfil() {
       </form>
 
       {/* Password Change Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full">
+      <AnimatePresence>
+        {showPasswordModal && (
+          <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full"
+            >
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Cambiar Contraseña</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Cambiar Contraseï¿½a</h2>
                 <button
                   onClick={() => setShowPasswordModal(false)}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -366,7 +374,7 @@ export default function EditarPerfil() {
             <form onSubmit={handlePasswordSubmit} className="p-6 space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Contraseña Actual
+                  Contraseï¿½a Actual
                 </label>
                 <input
                   type="password"
@@ -375,13 +383,13 @@ export default function EditarPerfil() {
                   onChange={handlePasswordChange}
                   required
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 dark:text-white"
-                  placeholder="Ingrese contraseña actual"
+                  placeholder="Ingrese contraseï¿½a actual"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nueva Contraseña
+                  Nueva Contraseï¿½a
                 </label>
                 <input
                   type="password"
@@ -391,13 +399,13 @@ export default function EditarPerfil() {
                   required
                   minLength="8"
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 dark:text-white"
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="Mï¿½nimo 8 caracteres"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Confirmar Nueva Contraseña
+                  Confirmar Nueva Contraseï¿½a
                 </label>
                 <input
                   type="password"
@@ -406,7 +414,7 @@ export default function EditarPerfil() {
                   onChange={handlePasswordChange}
                   required
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-900 dark:text-white"
-                  placeholder="Confirme la nueva contraseña"
+                  placeholder="Confirme la nueva contraseï¿½a"
                 />
               </div>
 
@@ -415,7 +423,7 @@ export default function EditarPerfil() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors font-semibold"
                 >
-                  Cambiar Contraseña
+                  Cambiar Contraseï¿½a
                 </button>
                 <button
                   type="button"
@@ -426,9 +434,10 @@ export default function EditarPerfil() {
                 </button>
               </div>
             </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

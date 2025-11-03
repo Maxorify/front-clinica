@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import Login from './pages/login/Login'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -34,9 +35,12 @@ import CheckingPacientes from './pages/secretaria/checkingPacientes';
 import './App.css'
 
 function App() {
+  const location = useLocation();
+
   return (
-    <Routes>
-      <Route path="/" element={<Login/>} />
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<Login/>} />
 
       {/* Rutas Admin */}
       <Route element={<ProtectedRoute allowedRoles={['admin']}><Layout/></ProtectedRoute>}>
@@ -67,7 +71,8 @@ function App() {
         <Route path="/secretaria/editar-perfil" element={<EditarPerfil />} />
         <Route path="/secretaria/checking-pacientes" element={<CheckingPacientes />} />
       </Route>
-    </Routes>
+      </Routes>
+    </AnimatePresence>
   )
 }
 

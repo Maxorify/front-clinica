@@ -34,6 +34,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const navigate = useNavigate();
 
   // Verificar si el usuario ya está autenticado al cargar el componente
@@ -51,7 +52,10 @@ export default function Login() {
 
       const redirectUrl = dashboardRoutes[user.rol_nombre];
       if (redirectUrl) {
-        navigate(redirectUrl, { replace: true });
+        setIsRedirecting(true);
+        setTimeout(() => {
+          navigate(redirectUrl, { replace: true });
+        }, 400);
       }
     }
   }, [navigate]);
@@ -86,9 +90,15 @@ export default function Login() {
         localStorage.setItem("user", JSON.stringify(data.data));
         localStorage.setItem("auth_token", data.data.auth_token || "");
 
-        // Redirigir según el rol usando la URL que envía el backend
+        // Activar animación de salida antes de redirigir
+        setIsRedirecting(true);
+        setIsSubmitting(false);
+
+        // Redirigir según el rol usando la URL que envía el backend con delay para animación
         if (data.redirect_url) {
-          navigate(data.redirect_url);
+          setTimeout(() => {
+            navigate(data.redirect_url);
+          }, 400);
         }
       }
     } catch (error) {
@@ -109,8 +119,8 @@ export default function Login() {
         <MotionDiv
           className="relative z-10 bg-white/95 p-10 rounded-3xl shadow-2xl w-full max-w-md ml-8 md:ml-16 lg:ml-24"
           initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
+          animate={isRedirecting ? { opacity: 0, x: 50, scale: 0.95 } : { opacity: 1, x: 0, scale: 1 }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
         >
           <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
             Inicio de sesión

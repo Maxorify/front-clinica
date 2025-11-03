@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HistoriaMedica() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,9 +10,9 @@ export default function HistoriaMedica() {
 
   // Datos de ejemplo
   const pacientes = [
-    { id: 1, nombre: 'María González', cedula: '1234567890', edad: 35 },
-    { id: 2, nombre: 'Juan Pérez', cedula: '0987654321', edad: 42 },
-    { id: 3, nombre: 'Ana López', cedula: '1122334455', edad: 28 },
+    { id: 1, nombre: 'Marï¿½a Gonzï¿½lez', cedula: '1234567890', edad: 35 },
+    { id: 2, nombre: 'Juan Pï¿½rez', cedula: '0987654321', edad: 42 },
+    { id: 3, nombre: 'Ana Lï¿½pez', cedula: '1122334455', edad: 28 },
     { id: 4, nombre: 'Carlos Ruiz', cedula: '5544332211', edad: 51 },
   ];
 
@@ -24,37 +25,37 @@ export default function HistoriaMedica() {
           hora: '09:00',
           motivo: 'Control general',
           sintomas: 'Dolor de cabeza ocasional, fatiga',
-          diagnostico: 'Hipertensión arterial controlada',
-          tratamiento: 'Losartán 50mg cada 12 horas',
-          observaciones: 'Paciente presenta mejoría. Continuar con tratamiento actual.',
+          diagnostico: 'Hipertensiï¿½n arterial controlada',
+          tratamiento: 'Losartï¿½n 50mg cada 12 horas',
+          observaciones: 'Paciente presenta mejorï¿½a. Continuar con tratamiento actual.',
           presionArterial: '130/85',
           peso: '68kg',
           altura: '165cm',
-          temperatura: '36.5°C'
+          temperatura: '36.5ï¿½C'
         },
         {
           id: 2,
           fecha: '2024-09-15',
           hora: '10:30',
-          motivo: 'Seguimiento hipertensión',
+          motivo: 'Seguimiento hipertensiï¿½n',
           sintomas: 'Ninguno',
-          diagnostico: 'Hipertensión arterial en tratamiento',
-          tratamiento: 'Losartán 50mg cada 12 horas',
-          observaciones: 'Valores de presión arterial estables.',
+          diagnostico: 'Hipertensiï¿½n arterial en tratamiento',
+          tratamiento: 'Losartï¿½n 50mg cada 12 horas',
+          observaciones: 'Valores de presiï¿½n arterial estables.',
           presionArterial: '125/80',
           peso: '67kg',
           altura: '165cm',
-          temperatura: '36.8°C'
+          temperatura: '36.8ï¿½C'
         }
       ],
       examenes: [
         {
           id: 1,
           fecha: '2024-10-20',
-          tipo: 'Exámenes de sangre',
-          descripcion: 'Perfil lipídico completo',
+          tipo: 'Exï¿½menes de sangre',
+          descripcion: 'Perfil lipï¿½dico completo',
           resultado: 'Normal',
-          observaciones: 'Colesterol: 180 mg/dL, Triglicéridos: 120 mg/dL'
+          observaciones: 'Colesterol: 180 mg/dL, Triglicï¿½ridos: 120 mg/dL'
         },
         {
           id: 2,
@@ -70,8 +71,8 @@ export default function HistoriaMedica() {
           id: 1,
           fecha: '2024-10-28',
           medicamentos: [
-            { nombre: 'Losartán', dosis: '50mg', frecuencia: 'Cada 12 horas', duracion: '30 días' },
-            { nombre: 'Ácido acetilsalicílico', dosis: '100mg', frecuencia: 'Una vez al día', duracion: '30 días' }
+            { nombre: 'Losartï¿½n', dosis: '50mg', frecuencia: 'Cada 12 horas', duracion: '30 dï¿½as' },
+            { nombre: 'ï¿½cido acetilsalicï¿½lico', dosis: '100mg', frecuencia: 'Una vez al dï¿½a', duracion: '30 dï¿½as' }
           ]
         }
       ],
@@ -103,8 +104,8 @@ export default function HistoriaMedica() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Historia Médica</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Consulta el historial médico de tus pacientes</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Historia Mï¿½dica</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Consulta el historial mï¿½dico de tus pacientes</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -146,7 +147,7 @@ export default function HistoriaMedica() {
                   <p className={`text-sm ${
                     selectedPaciente?.id === paciente.id ? 'text-green-100' : 'text-gray-600 dark:text-gray-400'
                   }`}>
-                    CI: {paciente.cedula} - {paciente.edad} años
+                    CI: {paciente.cedula} - {paciente.edad} aï¿½os
                   </p>
                 </button>
               ))}
@@ -154,7 +155,7 @@ export default function HistoriaMedica() {
           </div>
         </div>
 
-        {/* Historia Médica */}
+        {/* Historia Mï¿½dica */}
         <div className="lg:col-span-2">
           {!selectedPaciente ? (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
@@ -165,7 +166,7 @@ export default function HistoriaMedica() {
                 Selecciona un paciente
               </h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Selecciona un paciente de la lista para ver su historia médica
+                Selecciona un paciente de la lista para ver su historia mï¿½dica
               </p>
             </div>
           ) : (
@@ -178,7 +179,7 @@ export default function HistoriaMedica() {
                   </div>
                   <div className="text-white">
                     <h2 className="text-2xl font-bold">{selectedPaciente.nombre}</h2>
-                    <p className="text-green-100">CI: {selectedPaciente.cedula} - {selectedPaciente.edad} años</p>
+                    <p className="text-green-100">CI: {selectedPaciente.cedula} - {selectedPaciente.edad} aï¿½os</p>
                   </div>
                 </div>
               </div>
@@ -188,7 +189,7 @@ export default function HistoriaMedica() {
                 <div className="flex overflow-x-auto">
                   {[
                     { id: 'consultas', label: 'Consultas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
-                    { id: 'examenes', label: 'Exámenes', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+                    { id: 'examenes', label: 'Exï¿½menes', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
                     { id: 'recetas', label: 'Recetas', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
                     { id: 'vacunas', label: 'Vacunas', icon: 'M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z' }
                   ].map((tab) => (
@@ -239,14 +240,14 @@ export default function HistoriaMedica() {
                           </button>
                         </div>
                         <p className="text-sm text-gray-700 dark:text-gray-300">
-                          <span className="font-medium">Diagnóstico:</span> {consulta.diagnostico}
+                          <span className="font-medium">Diagnï¿½stico:</span> {consulta.diagnostico}
                         </p>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* Exámenes Tab */}
+                {/* Exï¿½menes Tab */}
                 {activeTab === 'examenes' && historiaActual?.examenes && (
                   <div className="space-y-4">
                     {historiaActual.examenes.map((examen) => (
@@ -300,7 +301,7 @@ export default function HistoriaMedica() {
                                   <span className="font-medium">Frecuencia:</span> {med.frecuencia}
                                 </div>
                                 <div>
-                                  <span className="font-medium">Duración:</span> {med.duracion}
+                                  <span className="font-medium">Duraciï¿½n:</span> {med.duracion}
                                 </div>
                               </div>
                             </div>
@@ -320,11 +321,11 @@ export default function HistoriaMedica() {
                           <div>
                             <h3 className="font-semibold text-gray-900 dark:text-white">{vacuna.nombre}</h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              Última dosis: {new Date(vacuna.fecha).toLocaleDateString('es-ES')}
+                              ï¿½ltima dosis: {new Date(vacuna.fecha).toLocaleDateString('es-ES')}
                             </p>
                             {vacuna.proximaDosis && (
                               <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                                Próxima dosis: {new Date(vacuna.proximaDosis).toLocaleDateString('es-ES')}
+                                Prï¿½xima dosis: {new Date(vacuna.proximaDosis).toLocaleDateString('es-ES')}
                               </p>
                             )}
                           </div>
@@ -343,9 +344,16 @@ export default function HistoriaMedica() {
       </div>
 
       {/* Consulta Detail Modal */}
-      {showConsultaModal && selectedConsulta && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <AnimatePresence>
+        {showConsultaModal && selectedConsulta && (
+          <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            >
             <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-br from-green-500 to-green-600">
               <div className="flex items-center justify-between">
                 <div className="text-white">
@@ -375,7 +383,7 @@ export default function HistoriaMedica() {
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Signos Vitales</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Presión Arterial</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Presiï¿½n Arterial</p>
                     <p className="text-lg font-bold text-gray-900 dark:text-white">{selectedConsulta.presionArterial}</p>
                   </div>
                   <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -393,17 +401,17 @@ export default function HistoriaMedica() {
                 </div>
               </div>
 
-              {/* Síntomas */}
+              {/* Sï¿½ntomas */}
               <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Síntomas</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Sï¿½ntomas</h3>
                 <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
                   {selectedConsulta.sintomas}
                 </p>
               </div>
 
-              {/* Diagnóstico */}
+              {/* Diagnï¿½stico */}
               <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Diagnóstico</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Diagnï¿½stico</h3>
                 <p className="text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
                   {selectedConsulta.diagnostico}
                 </p>
@@ -437,9 +445,10 @@ export default function HistoriaMedica() {
                 </button>
               </div>
             </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
