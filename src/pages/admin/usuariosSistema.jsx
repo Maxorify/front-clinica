@@ -421,27 +421,41 @@ export default function UsuariosSistema() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900 dark:text-white">{usuario.celular || 'Sin teléfono'}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => handleEdit(usuario)}
-                          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
-                        >
-                          Editar
-                        </button>
-                        {esDoctor(usuario.rol_id) && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => handleGenerarClave(usuario.id)}
-                            className="text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300"
+                            onClick={() => handleEdit(usuario)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 text-green-700 dark:text-green-400 rounded-lg transition-colors text-sm font-medium border border-green-200 dark:border-green-800"
+                            title="Editar usuario"
                           >
-                            Clave
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Editar
                           </button>
-                        )}
-                        <button
-                          onClick={() => handleDelete(usuario.id, `${usuario.nombre} ${usuario.apellido_paterno}`)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                        >
-                          Eliminar
-                        </button>
+                          {esDoctor(usuario.rol_id) && (
+                            <button
+                              onClick={() => handleGenerarClave(usuario.id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 dark:bg-orange-900/20 dark:hover:bg-orange-900/40 text-orange-700 dark:text-orange-400 rounded-lg transition-colors text-sm font-medium border border-orange-200 dark:border-orange-800"
+                              title="Generar clave temporal"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                              </svg>
+                              Clave
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(usuario.id, `${usuario.nombre} ${usuario.apellido_paterno}`)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 rounded-lg transition-colors text-sm font-medium border border-red-200 dark:border-red-800"
+                            title="Eliminar usuario"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Eliminar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
