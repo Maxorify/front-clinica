@@ -1,8 +1,373 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:5000';
+
+const dayLabels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const monthNames = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre'
+];
+
+const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const parseIsoDate = (iso) => {
+  if (!iso) return null;
+  const [year, month, day] = iso.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return startOfDay(new Date(year, month - 1, day));
+};
+
+const formatIsoDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatDisplayDate = (date) => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const clampDateToRange = (date, minDate, maxDate) => {
+  let result = startOfDay(date);
+  if (minDate && result < minDate) result = minDate;
+  if (maxDate && result > maxDate) result = maxDate;
+  return result;
+};
+
+const getMonthStart = (year, month) => startOfDay(new Date(year, month, 1));
+const getMonthEnd = (year, month) => startOfDay(new Date(year, month + 1, 0));
+
+const ensureViewWithinRange = (year, month, minDate, maxDate) => {
+  const start = getMonthStart(year, month);
+  const end = getMonthEnd(year, month);
+
+  if (minDate && end < minDate) {
+    return getMonthStart(minDate.getFullYear(), minDate.getMonth());
+  }
+
+  if (maxDate && start > maxDate) {
+    return getMonthStart(maxDate.getFullYear(), maxDate.getMonth());
+  }
+
+  return start;
+};
+
+const isSameDay = (a, b) => {
+  if (!a || !b) return false;
+  return a.getTime() === b.getTime();
+};
+
+const isDateDisabled = (date, minDate, maxDate) => {
+  if (minDate && date < minDate) return true;
+  if (maxDate && date > maxDate) return true;
+  return false;
+};
+
+const isMonthDisabled = (year, month, minDate, maxDate) => {
+  const start = getMonthStart(year, month);
+  const end = getMonthEnd(year, month);
+  if (minDate && end < minDate) return true;
+  if (maxDate && start > maxDate) return true;
+  return false;
+};
+
+function DatePicker({
+  value,
+  onChange,
+  min,
+  max,
+  name,
+  required,
+  className,
+  placeholder = 'dd/mm/aaaa'
+}) {
+  const containerRef = useRef(null);
+  const minDate = useMemo(() => (min ? parseIsoDate(min) : null), [min]);
+  const maxDate = useMemo(() => (max ? parseIsoDate(max) : null), [max]);
+  const selectedDate = useMemo(() => (value ? parseIsoDate(value) : null), [value]);
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const safeToday = useMemo(() => clampDateToRange(today, minDate, maxDate), [today, minDate, maxDate]);
+  const todaySelectable = !isDateDisabled(today, minDate, maxDate);
+  const [open, setOpen] = useState(false);
+  const [viewDate, setViewDate] = useState(() =>
+    ensureViewWithinRange(
+      (selectedDate ?? safeToday).getFullYear(),
+      (selectedDate ?? safeToday).getMonth(),
+      minDate,
+      maxDate
+    )
+  );
+
+  const selectedTime = selectedDate ? selectedDate.getTime() : null;
+
+  useEffect(() => {
+    setViewDate((prev) => {
+      const base = selectedDate ?? prev;
+      return ensureViewWithinRange(base.getFullYear(), base.getMonth(), minDate, maxDate);
+    });
+  }, [selectedTime, selectedDate, minDate, maxDate]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [open]);
+
+  const currentYear = viewDate.getFullYear();
+  const currentMonth = viewDate.getMonth();
+
+  const minYear = minDate ? minDate.getFullYear() : 1900;
+  const maxYear = maxDate ? maxDate.getFullYear() : today.getFullYear();
+
+  const yearOptions = useMemo(() => {
+    const years = [];
+    for (let year = minYear; year <= maxYear; year++) {
+      const fullYearDisabled =
+        (minDate && getMonthEnd(year, 11) < minDate) || (maxDate && getMonthStart(year, 0) > maxDate);
+      if (!fullYearDisabled) {
+        years.push(year);
+      }
+    }
+    return years;
+  }, [minYear, maxYear, minDate, maxDate]);
+
+  const monthOptions = useMemo(
+    () =>
+      monthNames.map((label, index) => ({
+        label,
+        value: index,
+        disabled: isMonthDisabled(currentYear, index, minDate, maxDate)
+      })),
+    [currentYear, minDate, maxDate]
+  );
+
+  const calendarDays = useMemo(() => {
+    const start = getMonthStart(currentYear, currentMonth);
+    const offset = (start.getDay() + 6) % 7;
+    return Array.from({ length: 42 }, (_, index) =>
+      startOfDay(new Date(currentYear, currentMonth, index - offset + 1))
+    );
+  }, [currentYear, currentMonth]);
+
+  const prevMonthStart = getMonthStart(currentYear, currentMonth - 1);
+  const prevMonthEnd = getMonthEnd(prevMonthStart.getFullYear(), prevMonthStart.getMonth());
+  const nextMonthStart = getMonthStart(currentYear, currentMonth + 1);
+
+  const prevDisabled = minDate ? prevMonthEnd < minDate : false;
+  const nextDisabled = maxDate ? nextMonthStart > maxDate : false;
+
+  const handleMonthChange = (delta) => {
+    setViewDate((current) => {
+      const next = ensureViewWithinRange(
+        current.getFullYear(),
+        current.getMonth() + delta,
+        minDate,
+        maxDate
+      );
+      return next;
+    });
+  };
+
+  const handleMonthSelect = (event) => {
+    const newMonth = Number(event.target.value);
+    if (Number.isNaN(newMonth)) return;
+    if (isMonthDisabled(currentYear, newMonth, minDate, maxDate)) return;
+    setViewDate((current) =>
+      ensureViewWithinRange(current.getFullYear(), newMonth, minDate, maxDate)
+    );
+  };
+
+  const handleYearSelect = (event) => {
+    const newYear = Number(event.target.value);
+    if (Number.isNaN(newYear)) return;
+    setViewDate((current) => ensureViewWithinRange(newYear, current.getMonth(), minDate, maxDate));
+  };
+
+  const handleSelect = (date) => {
+    if (isDateDisabled(date, minDate, maxDate)) return;
+    onChange?.(formatIsoDate(date));
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    onChange?.('');
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={`${className} flex items-center justify-between gap-3 text-left`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+      >
+        <span className={value ? 'text-gray-900 dark:text-white truncate' : 'text-gray-400 dark:text-gray-500 truncate'}>
+          {value && selectedDate ? formatDisplayDate(selectedDate) : placeholder}
+        </span>
+        <svg className="h-5 w-5 text-gray-400 dark:text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 2v2m8-2v2m-9 4h10m-12 0h14m0 0v12a2 2 0 01-2 2H7a2 2 0 01-2-2V8m5 4h.01m3.99 0h.01m3.99 0h.01m-8 4h.01m3.99 0h.01m3.99 0h.01" />
+        </svg>
+      </button>
+      <input type="text" name={name} value={value || ''} readOnly required={required} className="sr-only" tabIndex={-1} />
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.16 }}
+            className="absolute left-0 z-50 mt-2 w-full min-w-[16rem] rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-700 dark:bg-gray-900 sm:w-80"
+          >
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => handleMonthChange(-1)}
+                disabled={prevDisabled}
+                className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-30 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                aria-label="Mes anterior"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div className="flex items-center gap-2">
+                <select
+                  value={currentMonth}
+                  onChange={handleMonthSelect}
+                  className="rounded-lg border border-gray-200 bg-transparent px-3 py-1 text-sm font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:border-gray-700 dark:text-gray-200 dark:focus:ring-blue-500"
+                >
+                  {monthOptions.map(({ label, value: optionValue, disabled }) => (
+                    <option key={optionValue} value={optionValue} disabled={disabled}>
+                      {label.charAt(0).toUpperCase() + label.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={currentYear}
+                  onChange={handleYearSelect}
+                  className="rounded-lg border border-gray-200 bg-transparent px-3 py-1 text-sm font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:border-gray-700 dark:text-gray-200 dark:focus:ring-blue-500"
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleMonthChange(1)}
+                disabled={nextDisabled}
+                className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-30 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+                aria-label="Mes siguiente"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-2 grid grid-cols-7 text-center text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+              {dayLabels.map((label) => (
+                <span key={label}>{label}</span>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
+              {calendarDays.map((date) => {
+                const disabled = isDateDisabled(date, minDate, maxDate);
+                const selected = selectedDate ? isSameDay(date, selectedDate) : false;
+                const todayMatch = isSameDay(date, today);
+                const inCurrentMonth =
+                  date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+
+                let dayClass =
+                  'flex h-10 w-10 items-center justify-center rounded-lg text-sm font-medium transition focus:outline-none';
+
+                if (selected) {
+                  dayClass += ' bg-blue-500 text-white shadow-lg shadow-blue-500/30';
+                } else if (disabled) {
+                  dayClass += ' cursor-not-allowed text-gray-300 dark:text-gray-600';
+                } else {
+                  dayClass +=
+                    ' cursor-pointer hover:bg-blue-500/10 hover:text-blue-600 dark:hover:bg-blue-500/20 dark:hover:text-blue-100';
+                  dayClass += inCurrentMonth
+                    ? ' text-gray-700 dark:text-gray-100'
+                    : ' text-gray-400 dark:text-gray-500';
+                }
+
+                if (todayMatch && !selected) {
+                  dayClass += ' ring-1 ring-blue-400/70 dark:ring-blue-500/60';
+                }
+
+                return (
+                  <button
+                    type="button"
+                    key={date.getTime()}
+                    onClick={() => handleSelect(date)}
+                    disabled={disabled}
+                    className={dayClass}
+                  >
+                    {date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs font-semibold text-blue-600 dark:text-blue-300">
+              <button
+                type="button"
+                onClick={handleClear}
+                className="rounded-lg px-3 py-2 text-gray-500 transition hover:bg-blue-50 hover:text-blue-600 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-blue-200"
+              >
+                Limpiar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelect(safeToday)}
+                disabled={!todaySelectable}
+                className="rounded-lg px-3 py-2 transition hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-blue-500/20 dark:hover:text-blue-100"
+              >
+                Hoy
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function Pacientes() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -478,15 +843,17 @@ export default function Pacientes() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Fecha de Nacimiento <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="date"
+                      <DatePicker
                         name="fecha_nacimiento"
                         value={formData.fecha_nacimiento}
-                        onChange={handleInputChange}
+                        onChange={(newValue) =>
+                          handleInputChange({ target: { name: 'fecha_nacimiento', value: newValue } })
+                        }
                         min="1900-01-01"
                         max={new Date().toISOString().split('T')[0]}
                         required
                         className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                        placeholder="dd/mm/aaaa"
                       />
                     </div>
                     <div>

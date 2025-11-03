@@ -24,9 +24,11 @@ export default function Doctores() {
     celular: '',
     cel_secundario: '',
     direccion: '',
-    especialidad_id: '',
+    especialidades_ids: [], // Array de IDs de especialidades
     rol_id: 2 // Rol de doctor
   });
+
+  const [especialidadSeleccionada, setEspecialidadSeleccionada] = useState('');
 
   // Formatear RUT mientras se escribe
   const formatearRut = (rut) => {
@@ -106,6 +108,31 @@ export default function Doctores() {
     }
   };
 
+  // Agregar especialidad al doctor
+  const agregarEspecialidad = () => {
+    if (!especialidadSeleccionada) return;
+    
+    const espId = parseInt(especialidadSeleccionada);
+    if (formData.especialidades_ids.includes(espId)) {
+      showNotification('error', 'Esta especialidad ya está agregada');
+      return;
+    }
+    
+    setFormData({
+      ...formData,
+      especialidades_ids: [...formData.especialidades_ids, espId]
+    });
+    setEspecialidadSeleccionada('');
+  };
+
+  // Eliminar especialidad del doctor
+  const eliminarEspecialidad = (espId) => {
+    setFormData({
+      ...formData,
+      especialidades_ids: formData.especialidades_ids.filter(id => id !== espId)
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -122,7 +149,7 @@ export default function Doctores() {
         cel_secundario: formData.cel_secundario || '',
         direccion: formData.direccion,
         rol_id: 2,
-        especialidad_id: formData.especialidad_id || ''
+        especialidades_ids: formData.especialidades_ids // Enviar array de especialidades
       };
 
       if (editingId) {
@@ -166,7 +193,7 @@ export default function Doctores() {
       celular: doctor.celular || '',
       cel_secundario: doctor.cel_secundario || '',
       direccion: doctor.direccion || '',
-      especialidad_id: doctor.especialidad_id?.toString() || '',
+      especialidades_ids: doctor.especialidades_ids || [], // Cargar array de especialidades
       rol_id: 2
     });
     setShowModal(true);
@@ -222,9 +249,10 @@ export default function Doctores() {
       celular: '',
       cel_secundario: '',
       direccion: '',
-      especialidad_id: '',
+      especialidades_ids: [],
       rol_id: 2
     });
+    setEspecialidadSeleccionada('');
   };
 
   const cerrarPasswordModal = () => {
@@ -368,13 +396,25 @@ export default function Doctores() {
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
                     {doctor.nombre?.charAt(0)}{doctor.apellido_paterno?.charAt(0)}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                       {doctor.nombre || ''} {doctor.apellido_paterno || ''} {doctor.apellido_materno || ''}
                     </h3>
-                    <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-                      {especialidades.find(e => e.id === doctor.especialidad_id)?.nombre || 'Sin especialidad'}
-                    </p>
+                    {/* Mostrar especialidades como tags */}
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {doctor.especialidades_ids && doctor.especialidades_ids.length > 0 ? (
+                        doctor.especialidades_ids.map((espId) => {
+                          const esp = especialidades.find(e => e.id === espId);
+                          return esp ? (
+                            <span key={espId} className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                              {esp.nombre}
+                            </span>
+                          ) : null;
+                        })
+                      ) : (
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Sin especialidades</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -583,22 +623,68 @@ export default function Doctores() {
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Especialidad <span className="text-red-500">*</span>
+                        Especialidades <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        name="especialidad_id"
-                        value={formData.especialidad_id}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-                      >
-                        <option value="">Seleccione una especialidad...</option>
-                        {especialidades.map((esp) => (
-                          <option key={esp.id} value={esp.id}>
-                            {esp.nombre}
-                          </option>
-                        ))}
-                      </select>
+                      
+                      {/* Tags de especialidades seleccionadas */}
+                      {formData.especialidades_ids.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
+                          {formData.especialidades_ids.map((espId) => {
+                            const esp = especialidades.find(e => e.id === espId);
+                            return esp ? (
+                              <span
+                                key={espId}
+                                className="inline-flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded-full text-sm font-medium"
+                              >
+                                {esp.nombre}
+                                <button
+                                  type="button"
+                                  onClick={() => eliminarEspecialidad(espId)}
+                                  className="ml-1 hover:bg-blue-600 rounded-full p-0.5 transition-colors"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+
+                      {/* Selector para agregar especialidades */}
+                      <div className="flex gap-2">
+                        <select
+                          value={especialidadSeleccionada}
+                          onChange={(e) => setEspecialidadSeleccionada(e.target.value)}
+                          className="flex-1 px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                        >
+                          <option value="">Seleccione una especialidad...</option>
+                          {especialidades
+                            .filter(esp => !formData.especialidades_ids.includes(esp.id))
+                            .map((esp) => (
+                              <option key={esp.id} value={esp.id}>
+                                {esp.nombre}
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={agregarEspecialidad}
+                          disabled={!especialidadSeleccionada}
+                          className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                        </button>
+                      </div>
+
+                      {formData.especialidades_ids.length === 0 && (
+                        <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                          ⚠️ Debe agregar al menos una especialidad
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -614,7 +700,7 @@ export default function Doctores() {
                   </button>
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || formData.especialidades_ids.length === 0}
                     className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? 'Guardando...' : editingId ? 'Actualizar' : 'Guardar'}

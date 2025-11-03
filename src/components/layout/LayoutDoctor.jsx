@@ -1,13 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import SidebarDoctor from '../ui/SidebarDoctor';
 import PageTransition from '../PageTransition';
 
 export default function LayoutDoctor() {
-  const [darkMode, setDarkMode] = useState(true);
+  // Leer el modo oscuro desde localStorage, por defecto true
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
+
+  // Guardar en localStorage cuando cambie el modo oscuro
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   return (
     <div className={darkMode ? 'dark' : ''}>

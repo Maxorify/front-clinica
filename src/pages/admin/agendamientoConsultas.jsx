@@ -1,73 +1,324 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+
+const API_URL = 'http://localhost:5000';
 
 export default function AgendamientoConsultas() {
-  const [selectedDate, setSelectedDate] = useState('2024-10-31');
+  const today = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(today);
   const [selectedDoctor, setSelectedDoctor] = useState('all');
+  const [selectedEstado, setSelectedEstado] = useState('all');
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [citas, setCitas] = useState([]);
+  const [doctores, setDoctores] = useState([]);
+  const [pacientes, setPacientes] = useState([]);
+  const [especialidades, setEspecialidades] = useState([]);
+  const [doctoresFiltrados, setDoctoresFiltrados] = useState([]);
+  const [estadisticas, setEstadisticas] = useState({
+    total: 0,
+    confirmadas: 0,
+    pendientes: 0,
+    en_consulta: 0,
+    canceladas: 0
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [selectedCita, setSelectedCita] = useState(null);
 
-  const citas = [
-    {
-      id: 1,
-      hora: '08:00',
-      paciente: 'María González',
-      doctor: 'Dr. García',
-      tipo: 'Consulta General',
-      estado: 'Confirmada',
-      telefono: '555-0101'
-    },
-    {
-      id: 2,
-      hora: '08:30',
-      paciente: 'Juan Pérez',
-      doctor: 'Dra. Martínez',
-      tipo: 'Pediatría',
-      estado: 'Pendiente',
-      telefono: '555-0102'
-    },
-    {
-      id: 3,
-      hora: '09:00',
-      paciente: 'Ana López',
-      doctor: 'Dr. García',
-      tipo: 'Seguimiento',
-      estado: 'Confirmada',
-      telefono: '555-0103'
-    },
-    {
-      id: 4,
-      hora: '09:30',
-      paciente: 'Carlos Ruiz',
-      doctor: 'Dr. Rodríguez',
-      tipo: 'Cardiología',
-      estado: 'En Consulta',
-      telefono: '555-0104'
-    },
-    {
-      id: 5,
-      hora: '10:00',
-      paciente: 'Laura Martínez',
-      doctor: 'Dra. Fernández',
-      tipo: 'Ginecología',
-      estado: 'Cancelada',
-      telefono: '555-0105'
-    },
-    {
-      id: 6,
-      hora: '10:30',
-      paciente: 'Roberto Sánchez',
-      doctor: 'Dr. García',
-      tipo: 'Consulta General',
-      estado: 'Confirmada',
-      telefono: '555-0106'
-    },
-  ];
+  // Formulario nueva cita
+  const [formData, setFormData] = useState({
+    especialidad_id: '',
+    paciente_id: '',
+    doctor_id: '',
+    fecha: today,
+    hora: '08:00',
+    horario_id: '', // ID del bloque de horario seleccionado
+    motivo_consulta: ''
+  });
+
+  const [horariosDisponibles, setHorariosDisponibles] = useState([]);
+
+  // Formulario editar cita
+  const [editFormData, setEditFormData] = useState({
+    fecha_atencion: '',
+    motivo_consulta: ''
+  });
 
   const horarios = Array.from({ length: 20 }, (_, i) => {
     const hour = 8 + Math.floor(i / 2);
     const minute = i % 2 === 0 ? '00' : '30';
     return `${hour.toString().padStart(2, '0')}:${minute}`;
   });
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    cargarEspecialidades();
+    cargarDoctores();
+    cargarPacientes();
+    cargarCitas();
+    cargarEstadisticas();
+  }, []);
+
+  // Cargar doctores cuando cambia la especialidad seleccionada
+  useEffect(() => {
+    if (formData.especialidad_id) {
+      cargarDoctoresPorEspecialidad(formData.especialidad_id);
+    } else {
+      setDoctoresFiltrados([]);
+    }
+  }, [formData.especialidad_id]);
+
+  // Cargar horarios disponibles cuando cambia el doctor o la fecha
+  useEffect(() => {
+    if (formData.doctor_id && formData.fecha) {
+      cargarHorariosDisponibles();
+    } else {
+      setHorariosDisponibles([]);
+    }
+  }, [formData.doctor_id, formData.fecha]);
+
+  // Recargar citas cuando cambian los filtros
+  useEffect(() => {
+    cargarCitas();
+    cargarEstadisticas();
+  }, [selectedDate, selectedDoctor, selectedEstado]);
+
+  const cargarEspecialidades = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/Citas/listar-especialidades`);
+      setEspecialidades(response.data.especialidades || []);
+    } catch (err) {
+      console.error('Error al cargar especialidades:', err);
+    }
+  };
+
+  const cargarDoctores = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/Citas/listar-doctores`);
+      setDoctores(response.data.doctores || []);
+    } catch (err) {
+      console.error('Error al cargar doctores:', err);
+    }
+  };
+
+  const cargarDoctoresPorEspecialidad = async (especialidadId) => {
+    try {
+      const response = await axios.get(`${API_URL}/Citas/listar-doctores`, {
+        params: { especialidad_id: especialidadId }
+      });
+      setDoctoresFiltrados(response.data.doctores || []);
+      // Resetear doctor seleccionado si no está en la lista filtrada
+      if (formData.doctor_id) {
+        const doctorExiste = response.data.doctores.some(d => d.id === parseInt(formData.doctor_id));
+        if (!doctorExiste) {
+          setFormData({...formData, doctor_id: ''});
+        }
+      }
+    } catch (err) {
+      console.error('Error al cargar doctores por especialidad:', err);
+      setDoctoresFiltrados([]);
+    }
+  };
+
+  const cargarPacientes = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/Pacientes/listar-pacientes`);
+      setPacientes(response.data.pacientes || []);
+    } catch (err) {
+      console.error('Error al cargar pacientes:', err);
+    }
+  };
+
+  const cargarHorariosDisponibles = async () => {
+    try {
+      // Calcular rango de fechas (día seleccionado completo)
+      const fechaInicio = new Date(formData.fecha);
+      fechaInicio.setHours(0, 0, 0, 0);
+      
+      const fechaFin = new Date(formData.fecha);
+      fechaFin.setHours(23, 59, 59, 999);
+
+      const response = await axios.get(`${API_URL}/Horarios/horarios-disponibles`, {
+        params: {
+          doctor_id: formData.doctor_id,
+          fecha_inicio: fechaInicio.toISOString(),
+          fecha_fin: fechaFin.toISOString(),
+          especialidad_id: formData.especialidad_id || null
+        }
+      });
+      
+      setHorariosDisponibles(response.data.horarios_disponibles || []);
+    } catch (err) {
+      console.error('Error al cargar horarios disponibles:', err);
+      setHorariosDisponibles([]);
+    }
+  };
+
+  const cargarCitas = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = {};
+      if (selectedDate) params.fecha = selectedDate;
+      if (selectedDoctor !== 'all') params.doctor_id = selectedDoctor;
+      if (selectedEstado !== 'all') params.estado = selectedEstado;
+
+      const response = await axios.get(`${API_URL}/Citas/listar-citas`, { params });
+      setCitas(response.data.citas || []);
+    } catch (err) {
+      setError('Error al cargar las citas');
+      console.error('Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cargarEstadisticas = async () => {
+    try {
+      const params = {};
+      if (selectedDate) params.fecha = selectedDate;
+
+      const response = await axios.get(`${API_URL}/Citas/estadisticas`, { params });
+      setEstadisticas(response.data);
+    } catch (err) {
+      console.error('Error al cargar estadísticas:', err);
+    }
+  };
+
+  const crearCita = async () => {
+    try {
+      // Si se seleccionó un horario, usar su fecha/hora
+      let fechaHora;
+      if (formData.horario_id) {
+        const horarioSeleccionado = horariosDisponibles.find(h => h.id === parseInt(formData.horario_id));
+        if (horarioSeleccionado) {
+          fechaHora = horarioSeleccionado.inicio_bloque;
+        } else {
+          fechaHora = `${formData.fecha}T${formData.hora}:00`;
+        }
+      } else {
+        fechaHora = `${formData.fecha}T${formData.hora}:00`;
+      }
+
+      const payload = {
+        cita: {
+          fecha_atencion: fechaHora,
+          paciente_id: parseInt(formData.paciente_id),
+          doctor_id: parseInt(formData.doctor_id),
+          horario_id: formData.horario_id ? parseInt(formData.horario_id) : null
+        },
+        informacion: {
+          motivo_consulta: formData.motivo_consulta
+        },
+        estado_inicial: 'Pendiente'
+      };
+
+      await axios.post(`${API_URL}/Citas/crear-cita`, payload);
+      setShowModal(false);
+      setFormData({
+        especialidad_id: '',
+        paciente_id: '',
+        doctor_id: '',
+        fecha: today,
+        hora: '08:00',
+        horario_id: '',
+        motivo_consulta: ''
+      });
+      setDoctoresFiltrados([]);
+      setHorariosDisponibles([]);
+      cargarCitas();
+      cargarEstadisticas();
+      alert('Cita creada exitosamente');
+    } catch (err) {
+      console.error('Error al crear cita:', err);
+      alert(err.response?.data?.detail || 'Error al crear la cita');
+    }
+  };
+
+  const cambiarEstado = async (citaId, nuevoEstado) => {
+    try {
+      await axios.put(`${API_URL}/Citas/cambiar-estado/${citaId}`, {
+        estado: nuevoEstado
+      });
+      cargarCitas();
+      cargarEstadisticas();
+      alert(`Estado cambiado a ${nuevoEstado}`);
+    } catch (err) {
+      console.error('Error al cambiar estado:', err);
+      alert(err.response?.data?.detail || 'Error al cambiar el estado');
+    }
+  };
+
+  const verDetalleCita = async (citaId) => {
+    try {
+      const response = await axios.get(`${API_URL}/Citas/cita/${citaId}`);
+      setSelectedCita(response.data);
+      setShowDetailModal(true);
+    } catch (err) {
+      console.error('Error al cargar detalle:', err);
+      alert('Error al cargar el detalle de la cita');
+    }
+  };
+
+  const abrirEditarCita = (cita) => {
+    setSelectedCita(cita);
+    setEditFormData({
+      fecha_atencion: cita.fecha_atencion,
+      motivo_consulta: ''
+    });
+    setShowEditModal(true);
+  };
+
+  const editarCita = async () => {
+    try {
+      if (editFormData.fecha_atencion) {
+        await axios.put(`${API_URL}/Citas/modificar-cita/${selectedCita.id}`, {
+          fecha_atencion: editFormData.fecha_atencion
+        });
+      }
+
+      if (editFormData.motivo_consulta) {
+        await axios.put(`${API_URL}/Citas/modificar-informacion/${selectedCita.id}`, {
+          motivo_consulta: editFormData.motivo_consulta
+        });
+      }
+
+      setShowEditModal(false);
+      cargarCitas();
+      alert('Cita actualizada exitosamente');
+    } catch (err) {
+      console.error('Error al editar cita:', err);
+      alert(err.response?.data?.detail || 'Error al editar la cita');
+    }
+  };
+
+  const cancelarCita = async (citaId) => {
+    if (!confirm('¿Está seguro de cancelar esta cita?')) return;
+
+    try {
+      await axios.delete(`${API_URL}/Citas/cancelar-cita/${citaId}`);
+      cargarCitas();
+      cargarEstadisticas();
+      alert('Cita cancelada exitosamente');
+    } catch (err) {
+      console.error('Error al cancelar cita:', err);
+      alert(err.response?.data?.detail || 'Error al cancelar la cita');
+    }
+  };
+
+  const formatearFechaHora = (fechaISO) => {
+    const fecha = new Date(fechaISO);
+    const hora = fecha.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    return hora;
+  };
+
+  const formatearNombreCompleto = (persona) => {
+    if (!persona) return 'N/A';
+    return `${persona.nombre} ${persona.apellido_paterno || ''} ${persona.apellido_materno || ''}`.trim();
+  };
 
   const getEstadoColor = (estado) => {
     switch (estado) {
@@ -123,20 +374,25 @@ export default function AgendamientoConsultas() {
               className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
             >
               <option value="all">Todos los doctores</option>
-              <option value="garcia">Dr. García</option>
-              <option value="martinez">Dra. Martínez</option>
-              <option value="rodriguez">Dr. Rodríguez</option>
-              <option value="fernandez">Dra. Fernández</option>
+              {doctores.map((doctor) => (
+                <option key={doctor.id} value={doctor.id}>
+                  {formatearNombreCompleto(doctor)}
+                </option>
+              ))}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado</label>
-            <select className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
+            <select
+              value={selectedEstado}
+              onChange={(e) => setSelectedEstado(e.target.value)}
+              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+            >
               <option value="all">Todos los estados</option>
-              <option value="confirmada">Confirmada</option>
-              <option value="pendiente">Pendiente</option>
-              <option value="consulta">En Consulta</option>
-              <option value="cancelada">Cancelada</option>
+              <option value="Confirmada">Confirmada</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="En Consulta">En Consulta</option>
+              <option value="Cancelada">Cancelada</option>
             </select>
           </div>
         </div>
@@ -152,7 +408,7 @@ export default function AgendamientoConsultas() {
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">6</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{estadisticas.total}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400">Total Citas</p>
             </div>
           </div>
@@ -165,7 +421,7 @@ export default function AgendamientoConsultas() {
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">3</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{estadisticas.confirmadas}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400">Confirmadas</p>
             </div>
           </div>
@@ -178,7 +434,7 @@ export default function AgendamientoConsultas() {
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">1</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{estadisticas.pendientes}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400">Pendientes</p>
             </div>
           </div>
@@ -191,7 +447,7 @@ export default function AgendamientoConsultas() {
               </svg>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">1</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{estadisticas.canceladas}</p>
               <p className="text-xs text-gray-600 dark:text-gray-400">Canceladas</p>
             </div>
           </div>
@@ -200,55 +456,89 @@ export default function AgendamientoConsultas() {
 
       {/* Lista de Citas */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Hora</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tipo</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
-                <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {citas.map((cita) => (
-                <tr key={cita.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{cita.hora}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{cita.paciente}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{cita.telefono}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">{cita.doctor}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-white">{cita.tipo}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getEstadoColor(cita.estado)}`}>
-                      {cita.estado}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                    <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
-                      Ver
-                    </button>
-                    <button className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
-                      Editar
-                    </button>
-                    <button className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
-                      Cancelar
-                    </button>
-                  </td>
+        {loading ? (
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">Cargando citas...</div>
+        ) : error ? (
+          <div className="p-8 text-center text-red-500">{error}</div>
+        ) : citas.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">No hay citas para mostrar</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Hora</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paciente</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Doctor</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {citas.map((cita) => (
+                  <tr key={cita.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                        {formatearFechaHora(cita.fecha_atencion)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {formatearNombreCompleto(cita.paciente)}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {cita.paciente?.telefono || 'Sin teléfono'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 dark:text-white">
+                        {formatearNombreCompleto(cita.doctor)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getEstadoColor(cita.estado_actual)}`}>
+                        {cita.estado_actual}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => verDetalleCita(cita.id)}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          Ver
+                        </button>
+                        <button 
+                          onClick={() => abrirEditarCita(cita)}
+                          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                        >
+                          Editar
+                        </button>
+                        <select
+                          value={cita.estado_actual}
+                          onChange={(e) => cambiarEstado(cita.id, e.target.value)}
+                          className="text-sm px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border-0"
+                        >
+                          <option value="Pendiente">Pendiente</option>
+                          <option value="Confirmada">Confirmada</option>
+                          <option value="En Consulta">En Consulta</option>
+                          <option value="Completada">Completada</option>
+                          <option value="Cancelada">Cancelada</option>
+                        </select>
+                        <button 
+                          onClick={() => cancelarCita(cita.id)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal Nueva Cita */}
@@ -268,52 +558,106 @@ export default function AgendamientoConsultas() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Paciente</label>
-                  <select className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
-                    <option>Seleccionar paciente</option>
-                    <option>María González</option>
-                    <option>Juan Pérez</option>
-                    <option>Ana López</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Doctor</label>
-                  <select className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
-                    <option>Seleccionar doctor</option>
-                    <option>Dr. García</option>
-                    <option>Dra. Martínez</option>
-                    <option>Dr. Rodríguez</option>
-                    <option>Dra. Fernández</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha</label>
-                  <input
-                    type="date"
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Paciente *</label>
+                  <select 
+                    value={formData.paciente_id}
+                    onChange={(e) => setFormData({...formData, paciente_id: e.target.value})}
                     className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-                  />
+                    required
+                  >
+                    <option value="">Seleccionar paciente</option>
+                    {pacientes.map((paciente) => (
+                      <option key={paciente.id} value={paciente.id}>
+                        {formatearNombreCompleto(paciente)} - {paciente.rut}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Hora</label>
-                  <select className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
-                    {horarios.map((hora) => (
-                      <option key={hora} value={hora}>{hora}</option>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Especialidad *</label>
+                  <select 
+                    value={formData.especialidad_id}
+                    onChange={(e) => setFormData({...formData, especialidad_id: e.target.value, doctor_id: ''})}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    required
+                  >
+                    <option value="">Seleccionar especialidad</option>
+                    {especialidades.map((especialidad) => (
+                      <option key={especialidad.id} value={especialidad.id}>
+                        {especialidad.nombre}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de Consulta</label>
-                  <select className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white">
-                    <option>Consulta General</option>
-                    <option>Seguimiento</option>
-                    <option>Urgencia</option>
-                    <option>Control</option>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Doctor * {formData.especialidad_id && doctoresFiltrados.length === 0 && (
+                      <span className="text-yellow-600 text-xs ml-2">(No hay doctores disponibles para esta especialidad)</span>
+                    )}
+                  </label>
+                  <select 
+                    value={formData.doctor_id}
+                    onChange={(e) => setFormData({...formData, doctor_id: e.target.value})}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    required
+                    disabled={!formData.especialidad_id}
+                  >
+                    <option value="">
+                      {!formData.especialidad_id 
+                        ? 'Primero seleccione una especialidad' 
+                        : 'Seleccionar doctor'}
+                    </option>
+                    {doctoresFiltrados.map((doctor) => (
+                      <option key={doctor.id} value={doctor.id}>
+                        {formatearNombreCompleto(doctor)}
+                      </option>
+                    ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha *</label>
+                  <input
+                    type="date"
+                    value={formData.fecha}
+                    onChange={(e) => setFormData({...formData, fecha: e.target.value})}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Horario Disponible *
+                  </label>
+                  {horariosDisponibles.length > 0 ? (
+                    <select 
+                      value={formData.horario_id}
+                      onChange={(e) => setFormData({...formData, horario_id: e.target.value})}
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                      required
+                    >
+                      <option value="">Seleccione un horario...</option>
+                      {horariosDisponibles.map((horario) => (
+                        <option key={horario.id} value={horario.id}>
+                          {new Date(horario.inicio_bloque).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                          {' - '}
+                          {new Date(horario.finalizacion_bloque).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="w-full px-4 py-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-800 dark:text-yellow-300 text-sm">
+                      {formData.doctor_id && formData.fecha 
+                        ? '⚠️ No hay horarios disponibles para este doctor en la fecha seleccionada'
+                        : 'ℹ️ Seleccione un doctor y fecha para ver horarios disponibles'}
+                    </div>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Motivo de Consulta</label>
                   <textarea
                     rows="3"
+                    value={formData.motivo_consulta}
+                    onChange={(e) => setFormData({...formData, motivo_consulta: e.target.value})}
                     className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                     placeholder="Describa el motivo de la consulta..."
                   ></textarea>
@@ -327,10 +671,174 @@ export default function AgendamientoConsultas() {
               >
                 Cancelar
               </button>
-              <button className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+              <button 
+                onClick={crearCita}
+                disabled={!formData.paciente_id || !formData.doctor_id}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
                 Agendar Cita
               </button>
             </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Editar Cita */}
+      <AnimatePresence>
+        {showEditModal && selectedCita && (
+          <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Editar Cita</h2>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nueva Fecha y Hora</label>
+                    <input
+                      type="datetime-local"
+                      value={editFormData.fecha_atencion}
+                      onChange={(e) => setEditFormData({...editFormData, fecha_atencion: e.target.value})}
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Motivo de Consulta</label>
+                    <textarea
+                      rows="3"
+                      value={editFormData.motivo_consulta}
+                      onChange={(e) => setEditFormData({...editFormData, motivo_consulta: e.target.value})}
+                      className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                      placeholder="Actualizar motivo de consulta..."
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-4">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={editarCita}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Detalle Cita */}
+      <AnimatePresence>
+        {showDetailModal && selectedCita && (
+          <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Detalle de Cita</h2>
+              </div>
+              <div className="p-6 space-y-6">
+                {/* Información de la Cita */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Paciente</h3>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {formatearNombreCompleto(selectedCita.cita?.paciente)}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      RUT: {selectedCita.cita?.paciente?.rut}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Tel: {selectedCita.cita?.paciente?.telefono}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Email: {selectedCita.cita?.paciente?.correo}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Doctor</h3>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {formatearNombreCompleto(selectedCita.cita?.doctor)}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Fecha y Hora</h3>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {new Date(selectedCita.cita?.fecha_atencion).toLocaleString('es-CL')}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Estado Actual</h3>
+                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getEstadoColor(selectedCita.estado_actual)}`}>
+                      {selectedCita.estado_actual}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Información Clínica */}
+                {selectedCita.informacion && (
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Información Clínica</h3>
+                    <div className="space-y-4">
+                      {selectedCita.informacion.motivo_consulta && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Motivo de Consulta</h4>
+                          <p className="text-gray-900 dark:text-white">{selectedCita.informacion.motivo_consulta}</p>
+                        </div>
+                      )}
+                      {selectedCita.informacion.antecedentes && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Antecedentes</h4>
+                          <p className="text-gray-900 dark:text-white">{selectedCita.informacion.antecedentes}</p>
+                        </div>
+                      )}
+                      {selectedCita.informacion.dolores_sintomas && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Síntomas</h4>
+                          <p className="text-gray-900 dark:text-white">{selectedCita.informacion.dolores_sintomas}</p>
+                        </div>
+                      )}
+                      {selectedCita.informacion.evaluacion_doctor && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Evaluación del Doctor</h4>
+                          <p className="text-gray-900 dark:text-white">{selectedCita.informacion.evaluacion_doctor}</p>
+                        </div>
+                      )}
+                      {selectedCita.informacion.tratamiento && (
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Tratamiento</h4>
+                          <p className="text-gray-900 dark:text-white">{selectedCita.informacion.tratamiento}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
