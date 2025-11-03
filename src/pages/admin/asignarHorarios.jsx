@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { getChileDayStart, getChileDayEnd } from '../../utils/dateUtils';
 
 const API_URL = 'http://localhost:5000';
 
@@ -60,31 +61,36 @@ export default function AsignarHorarios() {
 
   const cargarHorarios = async () => {
     if (!doctorSeleccionado) return;
-    
+
     setLoading(true);
     try {
       // Calcular rango de fechas según la vista
       let inicio, fin;
-      
+
       if (vistaCalendario === 'semana') {
         // Para vista semanal: lunes a domingo de la semana actual
-        inicio = new Date(fechaActual);
-        const diaSemana = inicio.getDay();
+        const fechaBase = new Date(fechaActual);
+        const diaSemana = fechaBase.getDay();
         const diasHastaLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
-        inicio.setDate(inicio.getDate() + diasHastaLunes);
-        inicio.setHours(0, 0, 0, 0);
-        
-        fin = new Date(inicio);
-        fin.setDate(fin.getDate() + 6); // Domingo
-        fin.setHours(23, 59, 59, 999);
+        fechaBase.setDate(fechaBase.getDate() + diasHastaLunes);
+
+        const fechaInicioStr = fechaBase.toISOString().split('T')[0];
+
+        fechaBase.setDate(fechaBase.getDate() + 6); // Domingo
+        const fechaFinStr = fechaBase.toISOString().split('T')[0];
+
+        inicio = getChileDayStart(fechaInicioStr);
+        fin = getChileDayEnd(fechaFinStr);
       } else {
         // Para vista mensual: todo el mes
-        inicio = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
-        inicio.setHours(0, 0, 0, 0);
-        
-        fin = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0);
-        fin.setHours(23, 59, 59, 999);
+        const primerDia = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
+        const ultimoDia = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0);
+
+        inicio = getChileDayStart(primerDia.toISOString().split('T')[0]);
+        fin = getChileDayEnd(ultimoDia.toISOString().split('T')[0]);
       }
+
+      console.log('DEBUG - Cargando horarios para rango:', inicio.toISOString(), 'a', fin.toISOString());
 
       const response = await axios.get(`${API_URL}/Horarios/listar-horarios`, {
         params: {
@@ -93,7 +99,7 @@ export default function AsignarHorarios() {
           fecha_fin: fin.toISOString()
         }
       });
-      
+
       setHorarios(response.data.horarios || []);
     } catch (error) {
       console.error('Error al cargar horarios:', error);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { getChileDayStart, getChileDayEnd, chileTimeToUTC } from '../../utils/dateUtils';
 
 const API_URL = 'http://localhost:5000';
 
@@ -39,10 +40,12 @@ export default function AgendamientoConsultas() {
   });
 
   const [horariosDisponibles, setHorariosDisponibles] = useState([]);
+  const [horariosDisponiblesEditar, setHorariosDisponiblesEditar] = useState([]);
 
   // Formulario editar cita
   const [editFormData, setEditFormData] = useState({
-    fecha_atencion: '',
+    fecha: '',
+    hora: '',
     motivo_consulta: ''
   });
 
@@ -127,12 +130,13 @@ export default function AgendamientoConsultas() {
 
   const cargarHorariosDisponibles = async () => {
     try {
-      // Calcular rango de fechas (día seleccionado completo)
-      const fechaInicio = new Date(formData.fecha);
-      fechaInicio.setHours(0, 0, 0, 0);
-      
-      const fechaFin = new Date(formData.fecha);
-      fechaFin.setHours(23, 59, 59, 999);
+      // Calcular rango de fechas en zona horaria de Chile (UTC-3)
+      const fechaInicio = getChileDayStart(formData.fecha);
+      const fechaFin = getChileDayEnd(formData.fecha);
+
+      console.log('DEBUG Frontend - Buscando horarios para:', formData.fecha);
+      console.log('DEBUG Frontend - Fecha inicio UTC:', fechaInicio.toISOString());
+      console.log('DEBUG Frontend - Fecha fin UTC:', fechaFin.toISOString());
 
       const response = await axios.get(`${API_URL}/Horarios/horarios-disponibles`, {
         params: {
@@ -142,7 +146,7 @@ export default function AgendamientoConsultas() {
           especialidad_id: formData.especialidad_id || null
         }
       });
-      
+
       setHorariosDisponibles(response.data.horarios_disponibles || []);
     } catch (err) {
       console.error('Error al cargar horarios disponibles:', err);
@@ -189,12 +193,15 @@ export default function AgendamientoConsultas() {
         return;
       }
 
-      // Construir fecha/hora de la cita
-      const fechaHora = `${formData.fecha}T${formData.hora}:00`;
+      // Construir fecha/hora de la cita usando zona horaria de Chile
+      const fechaHoraUTC = chileTimeToUTC(formData.fecha, formData.hora);
+
+      console.log('DEBUG - Creando cita para fecha Chile:', formData.fecha, formData.hora);
+      console.log('DEBUG - Fecha UTC enviada al backend:', fechaHoraUTC);
 
       const payload = {
         cita: {
-          fecha_atencion: fechaHora,
+          fecha_atencion: fechaHoraUTC,
           paciente_id: parseInt(formData.paciente_id),
           doctor_id: parseInt(formData.doctor_id)
         },
@@ -250,23 +257,70 @@ export default function AgendamientoConsultas() {
     }
   };
 
+  const cargarHorariosDisponiblesEditar = async (doctorId, fecha) => {
+    try {
+      const fechaInicio = getChileDayStart(fecha);
+      const fechaFin = getChileDayEnd(fecha);
+
+      console.log('DEBUG Editar - Buscando horarios para:', fecha);
+
+      const response = await axios.get(`${API_URL}/Horarios/horarios-disponibles`, {
+        params: {
+          doctor_id: doctorId,
+          fecha_inicio: fechaInicio.toISOString(),
+          fecha_fin: fechaFin.toISOString()
+        }
+      });
+
+      setHorariosDisponiblesEditar(response.data.horarios_disponibles || []);
+    } catch (err) {
+      console.error('Error al cargar horarios para editar:', err);
+      setHorariosDisponiblesEditar([]);
+    }
+  };
+
   const abrirEditarCita = (cita) => {
     setSelectedCita(cita);
+
+    // Convertir la fecha UTC a hora de Chile para mostrar
+    const fechaUTC = new Date(cita.fecha_atencion);
+    const fechaChile = new Date(fechaUTC.getTime() - 3 * 60 * 60 * 1000);
+
+    const fechaStr = fechaChile.toISOString().split('T')[0];
+    const horaStr = fechaChile.toISOString().substring(11, 16);
+
     setEditFormData({
-      fecha_atencion: cita.fecha_atencion,
+      fecha: fechaStr,
+      hora: horaStr,
       motivo_consulta: ''
     });
+
+    // Cargar horarios disponibles para la fecha actual
+    cargarHorariosDisponiblesEditar(cita.doctor.id, fechaStr);
+
     setShowEditModal(true);
   };
 
   const editarCita = async () => {
     try {
-      if (editFormData.fecha_atencion) {
-        await axios.put(`${API_URL}/Citas/modificar-cita/${selectedCita.id}`, {
-          fecha_atencion: editFormData.fecha_atencion
-        });
+      // Verificar que se haya seleccionado una fecha y hora
+      if (!editFormData.fecha || !editFormData.hora) {
+        alert('Por favor, seleccione una fecha y hora para la cita');
+        return;
       }
 
+      // Construir fecha/hora usando zona horaria de Chile
+      const fechaHoraUTC = chileTimeToUTC(editFormData.fecha, editFormData.hora);
+
+      console.log('DEBUG - Editando cita para fecha Chile:', editFormData.fecha, editFormData.hora);
+      console.log('DEBUG - Nueva fecha UTC enviada al backend:', fechaHoraUTC);
+
+      // Actualizar la fecha de la cita
+      await axios.put(`${API_URL}/Citas/modificar-cita/${selectedCita.id}`, {
+        fecha_atencion: fechaHoraUTC
+      });
+
+      // Actualizar el motivo de consulta si se proporcionó
       if (editFormData.motivo_consulta) {
         await axios.put(`${API_URL}/Citas/modificar-informacion/${selectedCita.id}`, {
           motivo_consulta: editFormData.motivo_consulta
@@ -274,7 +328,9 @@ export default function AgendamientoConsultas() {
       }
 
       setShowEditModal(false);
+      setHorariosDisponiblesEditar([]);
       cargarCitas();
+      cargarEstadisticas();
       alert('Cita actualizada exitosamente');
     } catch (err) {
       console.error('Error al editar cita:', err);
@@ -624,23 +680,17 @@ export default function AgendamientoConsultas() {
                     >
                       <option value="">Seleccione un horario...</option>
                       {horariosDisponibles.map((horario) => {
-                        // Convertir a hora local
-                        const inicio = new Date(horario.inicio_bloque);
-                        const fin = new Date(horario.finalizacion_bloque);
+                        // Convertir de UTC a hora de Chile (UTC-3)
+                        const inicioUTC = new Date(horario.inicio_bloque);
+                        const finUTC = new Date(horario.finalizacion_bloque);
 
-                        // Extraer hora en formato HH:MM
-                        const horaInicio = inicio.toLocaleTimeString('es-CL', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: false,
-                          timeZone: 'UTC'  // Mostrar la hora como está guardada (sin conversión)
-                        });
-                        const horaFin = fin.toLocaleTimeString('es-CL', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: false,
-                          timeZone: 'UTC'
-                        });
+                        // Restar 3 horas para convertir de UTC a Chile
+                        const inicioChile = new Date(inicioUTC.getTime() - 3 * 60 * 60 * 1000);
+                        const finChile = new Date(finUTC.getTime() - 3 * 60 * 60 * 1000);
+
+                        // Extraer hora en formato HH:MM (en UTC para evitar conversión automática del navegador)
+                        const horaInicio = inicioChile.toISOString().substring(11, 16);
+                        const horaFin = finChile.toISOString().substring(11, 16);
 
                         return (
                           <option key={horario.id} value={horaInicio}>
@@ -702,20 +752,66 @@ export default function AgendamientoConsultas() {
             >
               <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Editar Cita</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Paciente: {formatearNombreCompleto(selectedCita.paciente)} | Doctor: {formatearNombreCompleto(selectedCita.doctor)}
+                </p>
               </div>
               <div className="p-6 space-y-4">
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nueva Fecha y Hora</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nueva Fecha *</label>
                     <input
-                      type="datetime-local"
-                      value={editFormData.fecha_atencion}
-                      onChange={(e) => setEditFormData({...editFormData, fecha_atencion: e.target.value})}
+                      type="date"
+                      value={editFormData.fecha}
+                      onChange={(e) => {
+                        setEditFormData({...editFormData, fecha: e.target.value, hora: ''});
+                        if (e.target.value && selectedCita.doctor.id) {
+                          cargarHorariosDisponiblesEditar(selectedCita.doctor.id, e.target.value);
+                        }
+                      }}
                       className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                      required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Motivo de Consulta</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Nuevo Horario *
+                    </label>
+                    {horariosDisponiblesEditar.length > 0 ? (
+                      <select
+                        value={editFormData.hora}
+                        onChange={(e) => setEditFormData({...editFormData, hora: e.target.value})}
+                        className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                        required
+                      >
+                        <option value="">Seleccione un horario...</option>
+                        {horariosDisponiblesEditar.map((horario) => {
+                          const inicioUTC = new Date(horario.inicio_bloque);
+                          const finUTC = new Date(horario.finalizacion_bloque);
+
+                          const inicioChile = new Date(inicioUTC.getTime() - 3 * 60 * 60 * 1000);
+                          const finChile = new Date(finUTC.getTime() - 3 * 60 * 60 * 1000);
+
+                          const horaInicio = inicioChile.toISOString().substring(11, 16);
+                          const horaFin = finChile.toISOString().substring(11, 16);
+
+                          return (
+                            <option key={horario.id} value={horaInicio}>
+                              {horaInicio} - {horaFin}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    ) : (
+                      <div className="w-full px-4 py-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-800 dark:text-yellow-300 text-sm">
+                        {editFormData.fecha
+                          ? '⚠️ No hay horarios disponibles para esta fecha'
+                          : 'ℹ️ Seleccione una fecha para ver horarios disponibles'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Actualizar Motivo de Consulta (opcional)</label>
                     <textarea
                       rows="3"
                       value={editFormData.motivo_consulta}
@@ -725,17 +821,26 @@ export default function AgendamientoConsultas() {
                     ></textarea>
                   </div>
                 </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <p className="text-xs text-blue-800 dark:text-blue-300">
+                    ℹ️ Solo puede seleccionar horarios disponibles del doctor. Si no ve el horario deseado, primero debe crear bloques de horario para ese día.
+                  </p>
+                </div>
               </div>
               <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-4">
                 <button
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setHorariosDisponiblesEditar([]);
+                  }}
                   className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors"
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   onClick={editarCita}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+                  disabled={!editFormData.fecha || !editFormData.hora}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   Guardar Cambios
                 </button>
