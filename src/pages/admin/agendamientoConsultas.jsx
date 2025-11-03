@@ -35,7 +35,6 @@ export default function AgendamientoConsultas() {
     doctor_id: '',
     fecha: today,
     hora: '08:00',
-    horario_id: '', // ID del bloque de horario seleccionado
     motivo_consulta: ''
   });
 
@@ -45,12 +44,6 @@ export default function AgendamientoConsultas() {
   const [editFormData, setEditFormData] = useState({
     fecha_atencion: '',
     motivo_consulta: ''
-  });
-
-  const horarios = Array.from({ length: 20 }, (_, i) => {
-    const hour = 8 + Math.floor(i / 2);
-    const minute = i % 2 === 0 ? '00' : '30';
-    return `${hour.toString().padStart(2, '0')}:${minute}`;
   });
 
   // Cargar datos iniciales
@@ -190,25 +183,20 @@ export default function AgendamientoConsultas() {
 
   const crearCita = async () => {
     try {
-      // Si se seleccionó un horario, usar su fecha/hora
-      let fechaHora;
-      if (formData.horario_id) {
-        const horarioSeleccionado = horariosDisponibles.find(h => h.id === parseInt(formData.horario_id));
-        if (horarioSeleccionado) {
-          fechaHora = horarioSeleccionado.inicio_bloque;
-        } else {
-          fechaHora = `${formData.fecha}T${formData.hora}:00`;
-        }
-      } else {
-        fechaHora = `${formData.fecha}T${formData.hora}:00`;
+      // Verificar que se haya seleccionado un horario disponible
+      if (horariosDisponibles.length > 0 && !formData.hora) {
+        alert('Por favor, seleccione un horario disponible');
+        return;
       }
+
+      // Construir fecha/hora de la cita
+      const fechaHora = `${formData.fecha}T${formData.hora}:00`;
 
       const payload = {
         cita: {
           fecha_atencion: fechaHora,
           paciente_id: parseInt(formData.paciente_id),
-          doctor_id: parseInt(formData.doctor_id),
-          horario_id: formData.horario_id ? parseInt(formData.horario_id) : null
+          doctor_id: parseInt(formData.doctor_id)
         },
         informacion: {
           motivo_consulta: formData.motivo_consulta
@@ -224,7 +212,6 @@ export default function AgendamientoConsultas() {
         doctor_id: '',
         fecha: today,
         hora: '08:00',
-        horario_id: '',
         motivo_consulta: ''
       });
       setDoctoresFiltrados([]);
@@ -629,24 +616,42 @@ export default function AgendamientoConsultas() {
                     Horario Disponible *
                   </label>
                   {horariosDisponibles.length > 0 ? (
-                    <select 
-                      value={formData.horario_id}
-                      onChange={(e) => setFormData({...formData, horario_id: e.target.value})}
+                    <select
+                      value={formData.hora}
+                      onChange={(e) => setFormData({...formData, hora: e.target.value})}
                       className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                       required
                     >
                       <option value="">Seleccione un horario...</option>
-                      {horariosDisponibles.map((horario) => (
-                        <option key={horario.id} value={horario.id}>
-                          {new Date(horario.inicio_bloque).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-                          {' - '}
-                          {new Date(horario.finalizacion_bloque).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-                        </option>
-                      ))}
+                      {horariosDisponibles.map((horario) => {
+                        // Convertir a hora local
+                        const inicio = new Date(horario.inicio_bloque);
+                        const fin = new Date(horario.finalizacion_bloque);
+
+                        // Extraer hora en formato HH:MM
+                        const horaInicio = inicio.toLocaleTimeString('es-CL', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                          timeZone: 'UTC'  // Mostrar la hora como está guardada (sin conversión)
+                        });
+                        const horaFin = fin.toLocaleTimeString('es-CL', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false,
+                          timeZone: 'UTC'
+                        });
+
+                        return (
+                          <option key={horario.id} value={horaInicio}>
+                            {horaInicio} - {horaFin}
+                          </option>
+                        );
+                      })}
                     </select>
                   ) : (
                     <div className="w-full px-4 py-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-800 dark:text-yellow-300 text-sm">
-                      {formData.doctor_id && formData.fecha 
+                      {formData.doctor_id && formData.fecha
                         ? '⚠️ No hay horarios disponibles para este doctor en la fecha seleccionada'
                         : 'ℹ️ Seleccione un doctor y fecha para ver horarios disponibles'}
                     </div>
