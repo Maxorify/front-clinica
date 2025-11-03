@@ -11,6 +11,7 @@ export default function Pacientes() {
   const [prevenciones, setPrevenciones] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [notification, setNotification] = useState(null);
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -85,6 +86,19 @@ export default function Pacientes() {
     }
   }, [formData.fecha_nacimiento]);
 
+  // Ocultar automáticamente la notificación después de unos segundos
+  useEffect(() => {
+    if (!notification) return;
+
+    const timer = setTimeout(() => setNotification(null), 4000);
+
+    return () => clearTimeout(timer);
+  }, [notification]);
+
+  const showNotification = (type, message) => {
+    setNotification({ id: Date.now(), type, message });
+  };
+
   const cargarPacientes = async () => {
     try {
       const response = await axios.get(`${API_URL}/Pacientes/listar-pacientes`);
@@ -92,7 +106,7 @@ export default function Pacientes() {
     } catch (error) {
       if (error.response?.status !== 404) {
         console.error('Error al cargar pacientes:', error);
-        alert('Error al cargar pacientes');
+        showNotification('error', 'Error al cargar pacientes');
       }
     }
   };
@@ -135,11 +149,11 @@ export default function Pacientes() {
       if (editingId) {
         // Actualizar paciente
         await axios.put(`${API_URL}/Pacientes/modificar-paciente/${editingId}`, dataToSend);
-        alert('Paciente actualizado correctamente');
+        showNotification('success', 'Paciente actualizado correctamente');
       } else {
         // Crear nuevo paciente
         await axios.post(`${API_URL}/Pacientes/crear-paciente`, dataToSend);
-        alert('Paciente creado correctamente');
+        showNotification('success', 'Paciente creado correctamente');
       }
 
       // Recargar lista y cerrar modal
@@ -147,7 +161,7 @@ export default function Pacientes() {
       cerrarModal();
     } catch (error) {
       console.error('Error al guardar paciente:', error);
-      alert(error.response?.data?.detail || 'Error al guardar paciente');
+      showNotification('error', error.response?.data?.detail || 'Error al guardar paciente');
     } finally {
       setLoading(false);
     }
@@ -179,11 +193,11 @@ export default function Pacientes() {
 
     try {
       await axios.delete(`${API_URL}/Pacientes/eliminar-paciente/${id}`);
-      alert('Paciente eliminado correctamente');
+      showNotification('success', 'Paciente eliminado correctamente');
       await cargarPacientes();
     } catch (error) {
       console.error('Error al eliminar paciente:', error);
-      alert(error.response?.data?.detail || 'Error al eliminar paciente');
+      showNotification('error', error.response?.data?.detail || 'Error al eliminar paciente');
     }
   };
 
@@ -219,7 +233,63 @@ export default function Pacientes() {
   );
 
   return (
-    <div className="space-y-6">
+    <>
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            key={notification.id}
+            initial={{ opacity: 0, y: -16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -16, scale: 0.98 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-6 right-6 z-50"
+          >
+            <div
+              className={`max-w-sm rounded-xl border shadow-2xl px-4 py-3 backdrop-blur bg-white/90 dark:bg-gray-900/90 ${
+                notification.type === 'success' ? 'border-emerald-500' : 'border-red-500'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <span
+                  className={`mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full ${
+                    notification.type === 'success'
+                      ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-100'
+                      : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-100'
+                  }`}
+                >
+                  {notification.type === 'success' ? (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v4m0 4h.01M12 5a7 7 0 100 14 7 7 0 000-14z" />
+                    </svg>
+                  )}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {notification.type === 'success' ? 'Accion completada' : 'Ocurrio un problema'}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{notification.message}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNotification(null)}
+                  className="ml-3 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
+                  aria-label="Cerrar notificacion"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -610,6 +680,7 @@ export default function Pacientes() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </>
   );
 }
