@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
-import jsPDF from "jspdf";
-import logoGrande from "../../assets/logo-grande.webp";
+import { generarBoletaPDF } from "../../utils/generarBoletaPDF";
 
 const API_URL = "http://localhost:5000";
 
 export default function Recepcion() {
   const [citas, setCitas] = useState([]);
   const [citasFiltradas, setCitasFiltradas] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [fechaFiltro, setFechaFiltro] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -74,30 +73,35 @@ export default function Recepcion() {
     }
   };
 
+  const actualizarCitas = () => {
+    const abortController = new AbortController();
+    cargarCitas(abortController.signal);
+  };
+
   const abrirModalPago = async (cita) => {
     try {
-      // Obtener la especialidad del doctor para obtener el precio
-      const doctorResponse = await axios.get(
-        `${API_URL}/Usuarios/obtener-usuario/${cita.doctor.id}`
-      );
-      const especialidadId = doctorResponse.data.especialidades?.[0]?.id;
+      // La cita ya trae la especialidad y el precio desde el backend
+      const especialidadId = cita.especialidad?.id;
+      const precio = cita.precio_especialidad || 0;
 
       if (!especialidadId) {
         showNotification(
           "error",
-          "El doctor no tiene una especialidad asignada"
+          "Esta cita no tiene una especialidad asignada"
         );
         return;
       }
 
-      // Obtener el precio de la especialidad
-      const precioResponse = await axios.get(
-        `${API_URL}/Citas/precio-especialidad/${especialidadId}`
-      );
-      const precio = precioResponse.data.costo_servicio?.precio || 0;
+      if (!precio || precio === 0) {
+        showNotification(
+          "error",
+          "Esta especialidad no tiene un precio asignado. Por favor, configure el precio en la sección de Especialidades."
+        );
+        return;
+      }
 
+      console.log("🔍 DEBUG - Especialidad:", cita.especialidad);
       console.log("🔍 DEBUG - Precio obtenido:", precio);
-      console.log("🔍 DEBUG - Respuesta completa:", precioResponse.data);
 
       setCitaSeleccionada({ ...cita, especialidad_id: especialidadId });
       setFormPago({
@@ -109,32 +113,8 @@ export default function Recepcion() {
       });
       setShowModalPago(true);
     } catch (error) {
-      console.error("Error al obtener precio:", error);
-
-      // Mensajes de error más específicos
-      if (
-        error.response?.status === 404 &&
-        error.config?.url?.includes("obtener-usuario")
-      ) {
-        showNotification(
-          "error",
-          "No se pudo obtener la información del doctor"
-        );
-      } else if (
-        error.response?.status === 404 &&
-        error.config?.url?.includes("precio-especialidad")
-      ) {
-        showNotification(
-          "error",
-          "Esta especialidad no tiene un precio asignado. Por favor, configure el precio en la sección de Especialidades."
-        );
-      } else {
-        showNotification(
-          "error",
-          error.response?.data?.detail ||
-            "Error al obtener el precio de la consulta"
-        );
-      }
+      console.error("Error al abrir modal de pago:", error);
+      showNotification("error", "Error al procesar la información de pago");
     }
   };
 
@@ -182,10 +162,13 @@ export default function Recepcion() {
       showNotification("success", "Pago procesado exitosamente");
 
       // Generar boleta PDF
-      await generarBoletaPDF(response.data, citaSeleccionada);
+      await generarBoletaPDF({
+        datoPago: response.data,
+        cita: citaSeleccionada,
+      });
 
       // Recargar citas
-      await cargarCitas();
+      actualizarCitas();
       cerrarModalPago();
     } catch (error) {
       console.error("Error al procesar pago:", error);
@@ -196,141 +179,6 @@ export default function Recepcion() {
     } finally {
       setLoadingPago(false);
     }
-  };
-
-  const generarBoletaPDF = async (datoPago, cita) => {
-    const doc = new jsPDF();
-
-    // Agregar logo
-    try {
-      const img = new Image();
-      img.src = logoGrande;
-      doc.addImage(img, "WEBP", 15, 10, 40, 40);
-    } catch (error) {
-      console.error("Error al cargar logo:", error);
-    }
-
-    // Encabezado
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text("COMPROBANTE DE PAGO", 105, 30, { align: "center" });
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Boleta N° ${datoPago.pago.id}`, 105, 40, { align: "center" });
-    doc.text(
-      `Fecha: ${new Date(datoPago.pago.fecha_pago).toLocaleString("es-CL")}`,
-      105,
-      47,
-      { align: "center" }
-    );
-
-    // Línea separadora
-    doc.setLineWidth(0.5);
-    doc.line(15, 55, 195, 55);
-
-    // Información del paciente
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("DATOS DEL PACIENTE", 15, 65);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      `Nombre: ${cita.paciente.nombre} ${cita.paciente.apellido_paterno} ${
-        cita.paciente.apellido_materno || ""
-      }`,
-      15,
-      73
-    );
-    doc.text(`RUT: ${cita.paciente.rut || "N/A"}`, 15, 80);
-    doc.text(`Teléfono: ${cita.paciente.telefono || "N/A"}`, 15, 87);
-
-    // Información del doctor
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("DATOS DEL PROFESIONAL", 15, 100);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      `Doctor: Dr(a). ${cita.doctor.nombre} ${cita.doctor.apellido_paterno} ${
-        cita.doctor.apellido_materno || ""
-      }`,
-      15,
-      108
-    );
-    doc.text(
-      `Fecha de atención: ${new Date(cita.fecha_atencion).toLocaleString(
-        "es-CL"
-      )}`,
-      15,
-      115
-    );
-
-    // Línea separadora
-    doc.line(15, 123, 195, 123);
-
-    // Detalles del pago
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("DETALLE DEL PAGO", 15, 133);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Método de pago: ${datoPago.pago.tipo_pago}`, 15, 141);
-
-    const y = 148;
-    doc.text(`Monto base consulta:`, 15, y);
-    doc.text(
-      `$${new Intl.NumberFormat("es-CL").format(datoPago.monto_original)}`,
-      140,
-      y
-    );
-
-    if (datoPago.descuento_aplicado > 0) {
-      doc.text(
-        `Descuento aplicado (${datoPago.descuento_aplicado}%):`,
-        15,
-        y + 7
-      );
-      doc.text(
-        `-$${new Intl.NumberFormat("es-CL").format(
-          datoPago.monto_original - datoPago.monto_final
-        )}`,
-        140,
-        y + 7
-      );
-    }
-
-    // Línea separadora
-    doc.setLineWidth(0.3);
-    doc.line(15, y + 12, 195, y + 12);
-
-    // Total
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("TOTAL PAGADO:", 15, y + 20);
-    doc.text(
-      `$${new Intl.NumberFormat("es-CL").format(datoPago.monto_final)}`,
-      140,
-      y + 20
-    );
-
-    // Pie de página
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "italic");
-    doc.text("Gracias por confiar en nuestros servicios", 105, 270, {
-      align: "center",
-    });
-    doc.text("Este comprobante es válido como respaldo de pago", 105, 275, {
-      align: "center",
-    });
-
-    // Guardar PDF
-    doc.save(
-      `Boleta_${datoPago.pago.id}_${cita.paciente.apellido_paterno}.pdf`
-    );
   };
 
   const formatearFecha = (fecha) => {
@@ -437,102 +285,318 @@ export default function Recepcion() {
       </AnimatePresence>
 
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Recepción de Pacientes
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Gestiona los pagos de las citas pendientes
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <input
-              type="date"
-              value={fechaFiltro}
-              onChange={(e) => setFechaFiltro(e.target.value)}
-              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-            />
-            <button
-              onClick={cargarCitas}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-            >
-              Actualizar
-            </button>
+        {/* Header Mejorado */}
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-8 text-white">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                <svg
+                  className="w-8 h-8"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Recepción de Pacientes</h1>
+                <p className="text-blue-100 mt-2 text-sm">
+                  Gestiona los pagos de las consultas médicas del día
+                </p>
+                <div className="flex items-center gap-2 mt-3">
+                  <div className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg">
+                    <span className="text-sm font-semibold">
+                      {citasFiltradas.length}
+                    </span>
+                    <span className="text-xs ml-1">citas pendientes</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+                <input
+                  type="date"
+                  value={fechaFiltro}
+                  onChange={(e) => setFechaFiltro(e.target.value)}
+                  className="pl-12 pr-4 py-3 bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-xl focus:ring-2 focus:ring-white/50 text-white placeholder-blue-200 font-medium"
+                />
+              </div>
+              <button
+                onClick={actualizarCitas}
+                className="px-6 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                Actualizar
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Lista de citas */}
+        {/* Lista de citas mejorada */}
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <div className="flex flex-col justify-center items-center h-64 bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-500"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-blue-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400 font-medium">
+              Cargando citas...
+            </p>
           </div>
         ) : citasFiltradas.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center border border-gray-200 dark:border-gray-700">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            <p className="mt-4 text-gray-500 dark:text-gray-400">
-              No hay citas pendientes para este día
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-2xl shadow-xl p-16 text-center border-2 border-dashed border-gray-300 dark:border-gray-600">
+            <div className="inline-flex p-5 bg-white dark:bg-gray-800 rounded-full shadow-lg mb-6">
+              <svg
+                className="w-16 h-16 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              No hay citas pendientes
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              No se encontraron consultas para procesar en esta fecha
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {citasFiltradas.map((cita) => (
+          <div className="grid grid-cols-1 gap-5">
+            {citasFiltradas.map((cita, index) => (
               <motion.div
                 key={cita.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-shadow"
+                transition={{ delay: index * 0.05 }}
+                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl border-2 border-gray-100 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300 overflow-hidden"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Paciente
-                      </p>
-                      <p className="font-semibold text-gray-900 dark:text-white">
-                        {cita.paciente.nombre} {cita.paciente.apellido_paterno}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {cita.paciente.rut}
-                      </p>
+                {/* Barra superior de color */}
+                <div className="h-1.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600"></div>
+
+                <div className="p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    {/* Paciente */}
+                    <div className="lg:col-span-3">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-xl group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
+                          <svg
+                            className="w-6 h-6 text-blue-600 dark:text-blue-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
+                            Paciente
+                          </p>
+                          <p className="font-bold text-gray-900 dark:text-white text-lg truncate">
+                            {cita.paciente.nombre}{" "}
+                            {cita.paciente.apellido_paterno}
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                            RUT: {cita.paciente.rut}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Doctor
-                      </p>
-                      <p className="font-semibold text-gray-900 dark:text-white">
-                        Dr. {cita.doctor.nombre} {cita.doctor.apellido_paterno}
-                      </p>
+
+                    {/* Doctor */}
+                    <div className="lg:col-span-3">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50 transition-colors">
+                          <svg
+                            className="w-6 h-6 text-emerald-600 dark:text-emerald-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide mb-1">
+                            Doctor
+                          </p>
+                          <p className="font-bold text-gray-900 dark:text-white truncate">
+                            Dr. {cita.doctor.nombre}{" "}
+                            {cita.doctor.apellido_paterno}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Fecha y Hora
-                      </p>
-                      <p className="font-semibold text-gray-900 dark:text-white">
-                        {formatearFecha(cita.fecha_atencion)}
-                      </p>
+
+                    {/* Especialidad y Precio */}
+                    <div className="lg:col-span-2">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2.5 bg-purple-50 dark:bg-purple-900/30 rounded-xl group-hover:bg-purple-100 dark:group-hover:bg-purple-900/50 transition-colors">
+                          <svg
+                            className="w-6 h-6 text-purple-600 dark:text-purple-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1">
+                            Especialidad
+                          </p>
+                          <p className="font-bold text-gray-900 dark:text-white truncate">
+                            {cita.especialidad?.nombre || "Sin especialidad"}
+                          </p>
+                          {cita.precio_especialidad && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <svg
+                                className="w-4 h-4 text-emerald-500"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                              </svg>
+                              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                $
+                                {new Intl.NumberFormat("es-CL").format(
+                                  cita.precio_especialidad
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-xs font-medium">
+
+                    {/* Fecha y Hora */}
+                    <div className="lg:col-span-2">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2.5 bg-amber-50 dark:bg-amber-900/30 rounded-xl group-hover:bg-amber-100 dark:group-hover:bg-amber-900/50 transition-colors">
+                          <svg
+                            className="w-6 h-6 text-amber-600 dark:text-amber-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">
+                            Fecha y Hora
+                          </p>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm">
+                            {formatearFecha(cita.fecha_atencion)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Acciones */}
+                    <div className="lg:col-span-2 flex flex-col items-stretch lg:items-end gap-3">
+                      <span className="px-4 py-2 bg-gradient-to-r from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-800/20 text-amber-700 dark:text-amber-400 rounded-xl text-sm font-bold text-center shadow-sm border border-amber-200 dark:border-amber-700">
                         {cita.estado_actual}
                       </span>
                       <button
                         onClick={() => abrirModalPago(cita)}
-                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors font-medium"
+                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
                       >
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                          />
+                        </svg>
                         Procesar Pago
                       </button>
                     </div>
@@ -544,57 +608,211 @@ export default function Recepcion() {
         )}
       </div>
 
-      {/* Modal de pago */}
+      {/* Modal de pago mejorado */}
       <AnimatePresence>
         {showModalPago && citaSeleccionada && (
-          <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-md flex items-center justify-center z-50 p-4">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
             >
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Procesar Pago
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Paciente: {citaSeleccionada.paciente.nombre}{" "}
-                  {citaSeleccionada.paciente.apellido_paterno}
-                </p>
+              {/* Header con gradiente */}
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-8 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
+
+                <div className="relative flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                      <svg
+                        className="w-8 h-8"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold mb-1">
+                        Procesar Pago de Consulta
+                      </h2>
+                      <div className="flex items-center gap-2 text-blue-100">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                        <span className="font-semibold">
+                          {citaSeleccionada.paciente.nombre}{" "}
+                          {citaSeleccionada.paciente.apellido_paterno}
+                        </span>
+                      </div>
+                      <p className="text-sm text-blue-100 mt-1">
+                        RUT: {citaSeleccionada.paciente.rut}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={cerrarModalPago}
+                    className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
-              <form onSubmit={procesarPago} className="p-6 space-y-6">
+              <form
+                onSubmit={procesarPago}
+                className="p-8 space-y-6 overflow-y-auto max-h-[calc(90vh-200px)]"
+              >
+                {/* Información de la cita */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                      <svg
+                        className="w-5 h-5 text-emerald-600 dark:text-emerald-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold uppercase">
+                        Doctor
+                      </p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">
+                        Dr. {citaSeleccionada.doctor.nombre}{" "}
+                        {citaSeleccionada.doctor.apellido_paterno}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                      <svg
+                        className="w-5 h-5 text-purple-600 dark:text-purple-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold uppercase">
+                        Fecha
+                      </p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">
+                        {formatearFecha(citaSeleccionada.fecha_atencion)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Método de pago */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Método de Pago <span className="text-red-500">*</span>
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <svg
+                      className="w-5 h-5 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                      />
+                    </svg>
+                    Método de Pago
+                    <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={formPago.tipo_pago}
-                    onChange={(e) =>
-                      setFormPago({ ...formPago, tipo_pago: e.target.value })
-                    }
-                    required
-                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-                  >
-                    <option value="Efectivo">Efectivo</option>
-                    <option value="Tarjeta de Débito">Tarjeta de Débito</option>
-                    <option value="Tarjeta de Crédito">
-                      Tarjeta de Crédito
-                    </option>
-                    <option value="Transferencia">Transferencia</option>
-                  </select>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      "Efectivo",
+                      "Tarjeta de Débito",
+                      "Tarjeta de Crédito",
+                      "Transferencia",
+                    ].map((metodo) => (
+                      <button
+                        key={metodo}
+                        type="button"
+                        onClick={() =>
+                          setFormPago({ ...formPago, tipo_pago: metodo })
+                        }
+                        className={`p-4 rounded-xl border-2 transition-all font-semibold text-sm ${
+                          formPago.tipo_pago === metodo
+                            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-md"
+                            : "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-blue-300"
+                        }`}
+                      >
+                        {metodo}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Monto base */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <svg
+                      className="w-5 h-5 text-emerald-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
                     Monto de la Consulta
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-3 text-gray-500 dark:text-gray-400 font-medium">
+                  <div className="relative group">
+                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl text-gray-500 dark:text-gray-400 font-bold">
                       $
                     </span>
                     <input
@@ -603,13 +821,13 @@ export default function Recepcion() {
                         formPago.monto_base
                       )}
                       disabled
-                      className="w-full pl-8 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white font-semibold"
+                      className="w-full pl-12 pr-6 py-4 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white font-bold text-2xl cursor-not-allowed"
                     />
                   </div>
                 </div>
 
                 {/* Habilitar descuento */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4 p-5 bg-blue-50 dark:bg-blue-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-800">
                   <input
                     type="checkbox"
                     id="habilitar_descuento"
@@ -620,112 +838,236 @@ export default function Recepcion() {
                         habilitar_descuento: e.target.checked,
                       })
                     }
-                    className="w-5 h-5 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-6 h-6 text-blue-600 rounded-lg focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   />
                   <label
                     htmlFor="habilitar_descuento"
-                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                    className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 cursor-pointer select-none"
                   >
-                    Aplicar descuento por aseguradora
+                    <svg
+                      className="w-5 h-5 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                      />
+                    </svg>
+                    Aplicar descuento por aseguradora o convenio
                   </label>
                 </div>
 
                 {/* Campos de descuento */}
-                {formPago.habilitar_descuento && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="space-y-4 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg"
-                  >
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Porcentaje de Descuento{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="1"
-                          value={formPago.descuento_aseguradora}
+                <AnimatePresence>
+                  {formPago.habilitar_descuento && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="space-y-5 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-6 rounded-xl border-2 border-blue-200 dark:border-blue-800"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                            <svg
+                              className="w-5 h-5 text-blue-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                              />
+                            </svg>
+                            Porcentaje de Descuento
+                            <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="1"
+                              value={formPago.descuento_aseguradora}
+                              onChange={(e) =>
+                                setFormPago({
+                                  ...formPago,
+                                  descuento_aseguradora:
+                                    parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              required={formPago.habilitar_descuento}
+                              className="w-full pr-12 pl-5 py-3 bg-white dark:bg-gray-700 border-2 border-blue-300 dark:border-blue-600 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white font-semibold text-lg"
+                              placeholder="0"
+                            />
+                            <span className="absolute right-5 top-1/2 -translate-y-1/2 text-blue-600 dark:text-blue-400 font-bold text-xl">
+                              %
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3">
+                            Descuento Calculado
+                          </label>
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center p-3 bg-white dark:bg-gray-700 rounded-xl border-2 border-blue-300 dark:border-blue-600 w-full">
+                              <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-1">
+                                Ahorro
+                              </p>
+                              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                $
+                                {new Intl.NumberFormat("es-CL").format(
+                                  formPago.monto_base - calcularMontoFinal()
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                          <svg
+                            className="w-5 h-5 text-blue-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          Motivo del Descuento
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          value={formPago.detalle_descuento}
                           onChange={(e) =>
                             setFormPago({
                               ...formPago,
-                              descuento_aseguradora:
-                                parseFloat(e.target.value) || 0,
+                              detalle_descuento: e.target.value,
                             })
                           }
                           required={formPago.habilitar_descuento}
-                          className="w-full pr-8 pl-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                          rows="3"
+                          placeholder="Ejemplo: Convenio con FONASA, Descuento por Isapre X, Promoción especial, etc."
+                          className="w-full px-5 py-3 bg-white dark:bg-gray-700 border-2 border-blue-300 dark:border-blue-600 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white resize-none"
                         />
-                        <span className="absolute right-4 top-3 text-gray-500 dark:text-gray-400 font-medium">
-                          %
-                        </span>
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Motivo del Descuento{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={formPago.detalle_descuento}
-                        onChange={(e) =>
-                          setFormPago({
-                            ...formPago,
-                            detalle_descuento: e.target.value,
-                          })
-                        }
-                        required={formPago.habilitar_descuento}
-                        rows="2"
-                        placeholder="Ejemplo: Convenio con FONASA, Descuento por aseguradora X, etc."
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white resize-none"
-                      />
-                    </div>
-                  </motion.div>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Total a pagar */}
-                <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 text-white">
-                  <p className="text-lg font-semibold opacity-90">
-                    Total a Pagar
-                  </p>
-                  <p className="text-4xl font-bold mt-2">
-                    $
-                    {new Intl.NumberFormat("es-CL").format(
-                      calcularMontoFinal()
-                    )}
-                  </p>
-                  {formPago.habilitar_descuento &&
-                    formPago.descuento_aseguradora > 0 && (
-                      <p className="text-sm opacity-80 mt-2">
-                        Ahorro: $
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-600 p-8 text-white shadow-2xl">
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20"></div>
+                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full -ml-16 -mb-16"></div>
+
+                  <div className="relative">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
+                          <svg
+                            className="w-7 h-7"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z"
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-xl font-bold">Total a Pagar</p>
+                      </div>
+                      {formPago.habilitar_descuento &&
+                        formPago.descuento_aseguradora > 0 && (
+                          <div className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                            <p className="text-sm font-semibold">
+                              -{formPago.descuento_aseguradora}% descuento
+                            </p>
+                          </div>
+                        )}
+                    </div>
+
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold opacity-90">$</span>
+                      <span className="text-5xl font-black">
                         {new Intl.NumberFormat("es-CL").format(
-                          formPago.monto_base - calcularMontoFinal()
-                        )}{" "}
-                        ({formPago.descuento_aseguradora}% descuento)
-                      </p>
-                    )}
+                          calcularMontoFinal()
+                        )}
+                      </span>
+                    </div>
+
+                    {formPago.habilitar_descuento &&
+                      formPago.descuento_aseguradora > 0 && (
+                        <div className="mt-4 pt-4 border-t border-white/20">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="opacity-90">Monto original:</span>
+                            <span className="font-semibold line-through opacity-75">
+                              $
+                              {new Intl.NumberFormat("es-CL").format(
+                                formPago.monto_base
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                  </div>
                 </div>
 
                 {/* Botones */}
-                <div className="flex justify-end gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-4 pt-6 border-t-2 border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
                     onClick={cerrarModalPago}
-                    className="px-6 py-3 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors font-semibold"
+                    className="px-8 py-4 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-500 transition-all font-bold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={loadingPago}
-                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all font-bold text-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
                   >
-                    {loadingPago ? "Procesando..." : "Confirmar Pago"}
+                    {loadingPago ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        Confirmar Pago
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
