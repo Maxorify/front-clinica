@@ -74,7 +74,7 @@ export default function Doctores() {
 
   const cargarDoctores = async () => {
     try {
-      const response = await axios.get(`${API_URL}/Roles/listar-usuarios`);
+      const response = await axios.get(`${API_URL}/Usuarios/listar-usuarios`);
       // Filtrar solo usuarios con rol_id = 2 (doctores)
       const doctoresFiltrados = (response.data?.usuarios || []).filter(u => u.rol_id === 2);
       setDoctores(doctoresFiltrados);
@@ -154,7 +154,7 @@ export default function Doctores() {
 
       if (editingId) {
         // Actualizar doctor - NO enviar contraseña_temporal
-        await axios.put(`${API_URL}/Roles/modificar-usuario/${editingId}`, dataBase);
+        await axios.put(`${API_URL}/Usuarios/modificar-usuario/${editingId}`, dataBase);
         showNotification('success', 'Doctor actualizado correctamente');
       } else {
         // Crear nuevo doctor con contraseña temporal
@@ -164,7 +164,7 @@ export default function Doctores() {
           contraseña_temporal: claveTemp
         };
 
-        await axios.post(`${API_URL}/Roles/crear-usuario`, dataToSend);
+        await axios.post(`${API_URL}/Usuarios/crear-usuario`, dataToSend);
         showNotification('success', 'Doctor creado correctamente');
 
         // Mostrar la clave temporal generada
@@ -203,7 +203,7 @@ export default function Doctores() {
     if (!confirm(`¿Está seguro de eliminar al doctor ${nombre}?`)) return;
 
     try {
-      await axios.delete(`${API_URL}/Roles/eliminar-usuario/${id}`);
+      await axios.delete(`${API_URL}/Usuarios/eliminar-usuario/${id}`);
       showNotification('success', 'Doctor eliminado correctamente');
       await cargarDoctores();
     } catch (error) {
@@ -218,7 +218,7 @@ export default function Doctores() {
 
       // Llamar al endpoint para guardar la clave temporal en la BD
       await axios.post(
-        `${API_URL}/Roles/generar-clave-temporal/${doctorId}`,
+        `${API_URL}/Usuarios/generar-clave-temporal/${doctorId}`,
         null,
         { params: { contraseña_temporal: claveTemp } }
       );

@@ -57,14 +57,20 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    cargarDatosDashboard();
+    const abortController = new AbortController();
+    cargarDatosDashboard(abortController.signal);
+
+    // Cleanup: cancelar peticiones pendientes cuando se desmonte el componente
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
-  const cargarDatosDashboard = async () => {
+  const cargarDatosDashboard = async (signal) => {
     setLoading(true);
     try {
       // Cargar estadísticas
-      const statsResponse = await axios.get(`${API_URL}/Dashboard/estadisticas`);
+      const statsResponse = await axios.get(`${API_URL}/Dashboard/estadisticas`, { signal });
       const estadisticas = statsResponse.data?.estadisticas || {};
 
       // Actualizar stats con datos reales
@@ -100,10 +106,15 @@ export default function Dashboard() {
       ]);
 
       // Cargar citas recientes
-      const citasResponse = await axios.get(`${API_URL}/Dashboard/citas-recientes?limite=5`);
+      const citasResponse = await axios.get(`${API_URL}/Dashboard/citas-recientes?limite=5`, { signal });
       setRecentAppointments(citasResponse.data?.citas || []);
 
     } catch (error) {
+      // Ignorar errores de cancelación
+      if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+        console.log('Petición cancelada correctamente');
+        return;
+      }
       console.error('Error al cargar datos del dashboard:', error);
     } finally {
       setLoading(false);

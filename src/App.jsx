@@ -34,6 +34,7 @@ import AgendarCita from './pages/secretaria/agendarCita';
 import CajaPagos from './pages/secretaria/cajaPagos';
 import EditarPerfil from './pages/secretaria/editarPerfil';
 import CheckingPacientes from './pages/secretaria/checkingPacientes';
+import Recepcion from './pages/secretaria/recepcion';
 
 import './App.css'
 
@@ -49,6 +50,7 @@ function App() {
       {/* Rutas Admin */}
       <Route element={<ProtectedRoute allowedRoles={['admin']}><Layout/></ProtectedRoute>}>
         <Route path="/admin/dashboard" element={<Dashboard />} />
+        <Route path="/admin/recepcion" element={<Recepcion />} />
         <Route path="/admin/agendamiento-consultas" element={<AgendamientoConsultas />} />
         <Route path="/admin/doctores" element={<Doctores />} />
         <Route path="/admin/pacientes" element={<Pacientes />} />
@@ -72,6 +74,8 @@ function App() {
       {/* Rutas Secretaria */}
       <Route element={<ProtectedRoute allowedRoles={['secretaria']}><LayoutSecretaria/></ProtectedRoute>}>
         <Route path="/secretaria/dashboard" element={<DashboardSecretaria />} />
+        <Route path="/secretaria/recepcion" element={<Recepcion />} />
+        <Route path="/secretaria/agendamiento" element={<AgendamientoConsultas />} />
         <Route path="/secretaria/agendar-cita" element={<AgendarCita />} />
         <Route path="/secretaria/caja-pagos" element={<CajaPagos />} />
         <Route path="/secretaria/editar-perfil" element={<EditarPerfil />} />

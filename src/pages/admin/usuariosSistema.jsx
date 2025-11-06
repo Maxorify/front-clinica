@@ -71,7 +71,7 @@ export default function UsuariosSistema() {
 
   const cargarUsuarios = async () => {
     try {
-      const response = await axios.get(`${API_URL}/Roles/listar-usuarios`);
+      const response = await axios.get(`${API_URL}/Usuarios/listar-usuarios`);
       setUsuarios(response.data?.usuarios || []);
     } catch (error) {
       if (error.response?.status !== 404) {
@@ -84,7 +84,7 @@ export default function UsuariosSistema() {
 
   const cargarRoles = async () => {
     try {
-      const response = await axios.get(`${API_URL}/Roles/listar-roles`);
+      const response = await axios.get(`${API_URL}/Usuarios/listar-roles`);
       setRoles(response.data?.roles || []);
     } catch (error) {
       if (error.response?.status !== 404) {
@@ -135,7 +135,7 @@ export default function UsuariosSistema() {
       };
 
       if (editingId) {
-        await axios.put(`${API_URL}/Roles/modificar-usuario/${editingId}`, dataBase);
+        await axios.put(`${API_URL}/Usuarios/modificar-usuario/${editingId}`, dataBase);
         showNotification('success', 'Usuario actualizado correctamente');
       } else {
         // Si el rol es doctor (rol_id = 2), generar contraseña temporal
@@ -145,11 +145,11 @@ export default function UsuariosSistema() {
             ...dataBase,
             contraseña_temporal: claveTemp
           };
-          await axios.post(`${API_URL}/Roles/crear-usuario`, dataToSend);
+          await axios.post(`${API_URL}/Usuarios/crear-usuario`, dataToSend);
           setTempPassword(claveTemp);
           setShowPasswordModal(true);
         } else {
-          await axios.post(`${API_URL}/Roles/crear-usuario`, dataBase);
+          await axios.post(`${API_URL}/Usuarios/crear-usuario`, dataBase);
         }
         showNotification('success', 'Usuario creado correctamente');
       }
@@ -185,7 +185,7 @@ export default function UsuariosSistema() {
     if (!confirm(`¿Está seguro de eliminar al usuario ${nombre}?`)) return;
 
     try {
-      await axios.delete(`${API_URL}/Roles/eliminar-usuario/${id}`);
+      await axios.delete(`${API_URL}/Usuarios/eliminar-usuario/${id}`);
       showNotification('success', 'Usuario eliminado correctamente');
       await cargarUsuarios();
     } catch (error) {
@@ -198,7 +198,7 @@ export default function UsuariosSistema() {
     try {
       const claveTemp = generarClaveTemporal();
       await axios.post(
-        `${API_URL}/Roles/generar-clave-temporal/${usuarioId}`,
+        `${API_URL}/Usuarios/generar-clave-temporal/${usuarioId}`,
         null,
         { params: { contraseña_temporal: claveTemp } }
       );

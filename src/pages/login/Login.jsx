@@ -40,14 +40,14 @@ export default function Login() {
   // Verificar si el usuario ya está autenticado al cargar el componente
   useEffect(() => {
     const user = getCurrentUser();
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem("auth_token");
 
     if (user && token && user.rol_nombre) {
       // Usuario ya autenticado, redirigir a su dashboard
       const dashboardRoutes = {
-        'admin': '/admin/dashboard',
-        'medico': '/doctor/dashboard',
-        'secretaria': '/secretaria/dashboard'
+        admin: "/admin/dashboard",
+        medico: "/doctor/dashboard",
+        secretaria: "/secretaria/dashboard",
       };
 
       const redirectUrl = dashboardRoutes[user.rol_nombre];
@@ -89,6 +89,10 @@ export default function Login() {
         // Guardar información del usuario en localStorage
         localStorage.setItem("user", JSON.stringify(data.data));
         localStorage.setItem("auth_token", data.data.auth_token || "");
+        localStorage.setItem("access_token", data.data.auth_token || ""); // Para compatibilidad
+        localStorage.setItem("user_id", data.data.id); // ID del usuario
+        localStorage.setItem("user_name", data.data.nombre); // Nombre del usuario
+        localStorage.setItem("user_role", data.data.rol_nombre); // Rol del usuario
 
         // Activar animación de salida antes de redirigir
         setIsRedirecting(true);
@@ -98,7 +102,7 @@ export default function Login() {
         if (data.data.contrasena_temporal === true) {
           // Redirigir a cambiar contraseña
           setTimeout(() => {
-            navigate('/cambiar-contrasena');
+            navigate("/cambiar-contrasena");
           }, 400);
         } else if (data.redirect_url) {
           // Redirigir según el rol usando la URL que envía el backend con delay para animación
@@ -125,7 +129,11 @@ export default function Login() {
         <MotionDiv
           className="relative z-10 bg-white/95 p-10 rounded-3xl shadow-2xl w-full max-w-md ml-8 md:ml-16 lg:ml-24"
           initial={{ opacity: 0, x: -30 }}
-          animate={isRedirecting ? { opacity: 0, x: 50, scale: 0.95 } : { opacity: 1, x: 0, scale: 1 }}
+          animate={
+            isRedirecting
+              ? { opacity: 0, x: 50, scale: 0.95 }
+              : { opacity: 1, x: 0, scale: 1 }
+          }
           transition={{ duration: 0.4, ease: "easeInOut" }}
         >
           <h2 className="text-2xl font-bold text-center mb-8 text-gray-800">
@@ -134,7 +142,10 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-2 text-gray-700">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium mb-2 text-gray-700"
+              >
                 Correo:
               </label>
               <TextField
@@ -150,28 +161,31 @@ export default function Login() {
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <EmailIcon sx={{ color: '#6b7280' }} />
+                      <EmailIcon sx={{ color: "#6b7280" }} />
                     </InputAdornment>
                   ),
                   sx: {
-                    backgroundColor: '#f9fafb',
-                    borderRadius: '12px',
-                    '& fieldset': {
-                      borderColor: '#e5e7eb',
+                    backgroundColor: "#f9fafb",
+                    borderRadius: "12px",
+                    "& fieldset": {
+                      borderColor: "#e5e7eb",
                     },
-                    '&:hover fieldset': {
-                      borderColor: '#d1d5db',
+                    "&:hover fieldset": {
+                      borderColor: "#d1d5db",
                     },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#2563eb',
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#2563eb",
                     },
-                  }
+                  },
                 }}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium mb-2 text-gray-700">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium mb-2 text-gray-700"
+              >
                 Contraseña:
               </label>
               <TextField
@@ -197,25 +211,23 @@ export default function Login() {
                     </InputAdornment>
                   ),
                   sx: {
-                    backgroundColor: '#f9fafb',
-                    borderRadius: '12px',
-                    '& fieldset': {
-                      borderColor: '#e5e7eb',
+                    backgroundColor: "#f9fafb",
+                    borderRadius: "12px",
+                    "& fieldset": {
+                      borderColor: "#e5e7eb",
                     },
-                    '&:hover fieldset': {
-                      borderColor: '#d1d5db',
+                    "&:hover fieldset": {
+                      borderColor: "#d1d5db",
                     },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#2563eb',
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#2563eb",
                     },
-                  }
+                  },
                 }}
               />
             </div>
 
-            {formError && (
-              <p className="text-red-500 text-sm">{formError}</p>
-            )}
+            {formError && <p className="text-red-500 text-sm">{formError}</p>}
 
             <Button
               type="submit"
@@ -223,20 +235,20 @@ export default function Login() {
               variant="contained"
               disabled={isSubmitting}
               sx={{
-                backgroundColor: '#2563eb',
-                '&:hover': {
-                  backgroundColor: '#1d4ed8',
+                backgroundColor: "#2563eb",
+                "&:hover": {
+                  backgroundColor: "#1d4ed8",
                 },
-                '&:disabled': {
-                  backgroundColor: '#93c5fd',
+                "&:disabled": {
+                  backgroundColor: "#93c5fd",
                 },
-                textTransform: 'none',
-                fontSize: '1rem',
+                textTransform: "none",
+                fontSize: "1rem",
                 fontWeight: 600,
-                padding: '14px',
-                borderRadius: '12px',
-                marginTop: '0.5rem',
-                boxShadow: '0 4px 14px 0 rgba(37, 99, 235, 0.39)',
+                padding: "14px",
+                borderRadius: "12px",
+                marginTop: "0.5rem",
+                boxShadow: "0 4px 14px 0 rgba(37, 99, 235, 0.39)",
               }}
             >
               {isSubmitting ? "Ingresando..." : "Login"}

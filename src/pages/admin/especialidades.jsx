@@ -14,7 +14,8 @@ export default function Especialidades() {
 
   const [formData, setFormData] = useState({
     nombre: '',
-    descripcion: ''
+    descripcion: '',
+    precio: ''
   });
 
   // Cargar especialidades al montar el componente
@@ -80,7 +81,8 @@ export default function Especialidades() {
     setEditingId(especialidad.id);
     setFormData({
       nombre: especialidad.nombre || '',
-      descripcion: especialidad.descripcion || ''
+      descripcion: especialidad.descripcion || '',
+      precio: especialidad.precio || ''
     });
     setShowModal(true);
   };
@@ -103,7 +105,8 @@ export default function Especialidades() {
     setEditingId(null);
     setFormData({
       nombre: '',
-      descripcion: ''
+      descripcion: '',
+      precio: ''
     });
   };
 
@@ -238,9 +241,16 @@ export default function Especialidades() {
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                    {especialidad.nombre}
-                  </h3>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                      {especialidad.nombre}
+                    </h3>
+                    {especialidad.precio && (
+                      <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-sm font-semibold">
+                        ${new Intl.NumberFormat('es-CL').format(especialidad.precio)}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
                     {especialidad.descripcion || 'Sin descripción'}
                   </p>
@@ -311,6 +321,27 @@ export default function Especialidades() {
                     placeholder="Ej: Cardiología, Pediatría, Neurología..."
                     className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Precio de Consulta <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-2.5 text-gray-500 dark:text-gray-400 font-medium">$</span>
+                    <input
+                      type="number"
+                      name="precio"
+                      value={formData.precio}
+                      onChange={handleInputChange}
+                      required
+                      min="0"
+                      step="1"
+                      placeholder="30000"
+                      className="w-full pl-8 pr-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Valor en pesos chilenos (CLP)</p>
                 </div>
 
                 <div>

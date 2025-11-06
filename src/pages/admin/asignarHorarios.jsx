@@ -16,6 +16,8 @@ export default function AsignarHorarios() {
   const [notification, setNotification] = useState(null);
   const [vistaCalendario, setVistaCalendario] = useState('semana'); // 'semana' o 'mes'
   const [fechaActual, setFechaActual] = useState(new Date());
+  const [busquedaDoctor, setBusquedaDoctor] = useState('');
+  const [mostrarDropdown, setMostrarDropdown] = useState(false);
 
   const [formData, setFormData] = useState({
     dia_semana: 0, // 0=Lunes, 6=Domingo
@@ -29,12 +31,24 @@ export default function AsignarHorarios() {
   const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
   useEffect(() => {
-    cargarDoctores();
+    const abortController = new AbortController();
+    cargarDoctores(abortController.signal);
+
+    // Cleanup: cancelar peticiones pendientes cuando se desmonte
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
   useEffect(() => {
     if (doctorSeleccionado) {
-      cargarHorarios();
+      const abortController = new AbortController();
+      cargarHorarios(abortController.signal);
+
+      // Cleanup: cancelar peticiones pendientes cuando cambien los filtros
+      return () => {
+        abortController.abort();
+      };
     }
   }, [doctorSeleccionado, fechaActual, vistaCalendario]);
 
@@ -48,18 +62,23 @@ export default function AsignarHorarios() {
     setNotification({ id: Date.now(), type, message });
   };
 
-  const cargarDoctores = async () => {
+  const cargarDoctores = async (signal) => {
     try {
-      const response = await axios.get(`${API_URL}/Roles/listar-usuarios`);
+      const response = await axios.get(`${API_URL}/Usuarios/listar-usuarios`, { signal });
       const doctoresFiltrados = (response.data?.usuarios || []).filter(u => u.rol_id === 2);
       setDoctores(doctoresFiltrados);
     } catch (error) {
+      // Ignorar errores de cancelación
+      if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+        console.log('Petición cancelada correctamente');
+        return;
+      }
       console.error('Error al cargar doctores:', error);
       showNotification('error', 'Error al cargar doctores');
     }
   };
 
-  const cargarHorarios = async () => {
+  const cargarHorarios = async (signal) => {
     if (!doctorSeleccionado) return;
 
     setLoading(true);
@@ -97,11 +116,17 @@ export default function AsignarHorarios() {
           usuario_sistema_id: doctorSeleccionado.id,
           fecha_inicio: inicio.toISOString(),
           fecha_fin: fin.toISOString()
-        }
+        },
+        signal
       });
 
       setHorarios(response.data.horarios || []);
     } catch (error) {
+      // Ignorar errores de cancelación
+      if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
+        console.log('Petición cancelada correctamente');
+        return;
+      }
       console.error('Error al cargar horarios:', error);
       showNotification('error', 'Error al cargar horarios');
     } finally {
@@ -164,6 +189,12 @@ export default function AsignarHorarios() {
     if (!persona) return '';
     return `${persona.nombre || ''} ${persona.apellido_paterno || ''} ${persona.apellido_materno || ''}`.trim();
   };
+
+  const doctoresFiltrados = doctores.filter(doctor => {
+    if (!busquedaDoctor) return true;
+    const nombreCompleto = formatearNombreCompleto(doctor).toLowerCase();
+    return nombreCompleto.includes(busquedaDoctor.toLowerCase());
+  });
 
   const formatearFechaHora = (fecha) => {
     return new Date(fecha).toLocaleString('es-CL', {
@@ -374,21 +405,66 @@ export default function AsignarHorarios() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             Seleccionar Doctor
           </label>
-          <select
-            value={doctorSeleccionado?.id || ''}
-            onChange={(e) => {
-              const doctor = doctores.find(d => d.id === parseInt(e.target.value));
-              setDoctorSeleccionado(doctor);
-            }}
-            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
-          >
-            <option value="">Seleccione un doctor...</option>
-            {doctores.map((doctor) => (
-              <option key={doctor.id} value={doctor.id}>
-                {formatearNombreCompleto(doctor)}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <div className="relative">
+              <input
+                type="text"
+                value={doctorSeleccionado ? formatearNombreCompleto(doctorSeleccionado) : busquedaDoctor}
+                onChange={(e) => {
+                  setBusquedaDoctor(e.target.value);
+                  setMostrarDropdown(true);
+                  if (!e.target.value) {
+                    setDoctorSeleccionado(null);
+                  }
+                }}
+                onFocus={() => setMostrarDropdown(true)}
+                placeholder="Buscar doctor por nombre..."
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white pr-10"
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+
+            {mostrarDropdown && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setMostrarDropdown(false)}
+                />
+                <div className="absolute z-20 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  {doctoresFiltrados.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                      No se encontraron doctores
+                    </div>
+                  ) : (
+                    doctoresFiltrados.map((doctor) => (
+                      <button
+                        key={doctor.id}
+                        onClick={() => {
+                          setDoctorSeleccionado(doctor);
+                          setBusquedaDoctor('');
+                          setMostrarDropdown(false);
+                        }}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                          doctorSeleccionado?.id === doctor.id
+                            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                            : 'text-gray-900 dark:text-white'
+                        }`}
+                      >
+                        <div className="font-medium">{formatearNombreCompleto(doctor)}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          RUT: {doctor.rut || 'N/A'}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {doctorSeleccionado && (
@@ -561,7 +637,7 @@ export default function AsignarHorarios() {
                 <div className="p-6">
                   {/* Headers días de la semana */}
                   <div className="grid grid-cols-7 gap-2 mb-2">
-                    {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((dia) => (
+                    {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((dia) => (
                       <div key={dia} className="text-center text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase py-2">
                         {dia}
                       </div>
