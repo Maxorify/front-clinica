@@ -94,8 +94,14 @@ export default function Login() {
         setIsRedirecting(true);
         setIsSubmitting(false);
 
-        // Redirigir según el rol usando la URL que envía el backend con delay para animación
-        if (data.redirect_url) {
+        // Verificar si tiene contraseña temporal
+        if (data.data.contrasena_temporal === true) {
+          // Redirigir a cambiar contraseña
+          setTimeout(() => {
+            navigate('/cambiar-contrasena');
+          }, 400);
+        } else if (data.redirect_url) {
+          // Redirigir según el rol usando la URL que envía el backend con delay para animación
           setTimeout(() => {
             navigate(data.redirect_url);
           }, 400);

@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Login from './pages/login/Login'
+import CambiarContrasena from './pages/auth/CambiarContrasena'
 import ProtectedRoute from './components/ProtectedRoute'
 
 // Layouts
@@ -43,6 +44,7 @@ function App() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Login/>} />
+        <Route path="/cambiar-contrasena" element={<CambiarContrasena/>} />
 
       {/* Rutas Admin */}
       <Route element={<ProtectedRoute allowedRoles={['admin']}><Layout/></ProtectedRoute>}>
