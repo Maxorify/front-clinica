@@ -25,7 +25,6 @@ import BoletasGeneradas from "./pages/admin/boletasGeneradas";
 // Doctor Pages
 import DashboardDoctor from "./pages/doctor/DashboardDoctor";
 import CitasDoctor from "./pages/doctor/CitasDoctor";
-import PacientesDoctor from "./pages/doctor/pacientes";
 import HistoriaMedica from "./pages/doctor/historiaMedica";
 import MiPerfil from "./pages/doctor/miPerfil";
 
@@ -90,7 +89,6 @@ function App() {
         >
           <Route path="/doctor/dashboard" element={<DashboardDoctor />} />
           <Route path="/doctor/citas" element={<CitasDoctor />} />
-          <Route path="/doctor/pacientes" element={<PacientesDoctor />} />
           <Route path="/doctor/historial" element={<HistoriaMedica />} />
           <Route path="/doctor/perfil" element={<MiPerfil />} />
         </Route>
@@ -117,11 +115,10 @@ function App() {
             path="/secretaria/pacientes"
             element={<PacientesSecretaria />}
           />
-          <Route path="/secretaria/caja-pagos" element={<CajaPagos />} />
           <Route path="/secretaria/editar-perfil" element={<EditarPerfil />} />
           <Route
-            path="/secretaria/checking-pacientes"
-            element={<CheckingPacientes />}
+            path="/secretaria/boletas-generadas"
+            element={<BoletasGeneradas />}
           />
         </Route>
       </Routes>

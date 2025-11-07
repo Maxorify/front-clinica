@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { generarRecetaPDF } from "../../utils/generarRecetaPDF";
 
 export default function CitasDoctor() {
@@ -34,6 +35,11 @@ export default function CitasDoctor() {
     duracion: "",
     cantidad: "",
   });
+
+  // Estado para historial médico
+  const [historialMedico, setHistorialMedico] = useState([]);
+  const [loadingHistorial, setLoadingHistorial] = useState(false);
+  const [consultasExpandidas, setConsultasExpandidas] = useState({});
 
   useEffect(() => {
     cargarDatos();
@@ -95,6 +101,11 @@ export default function CitasDoctor() {
         setCitaEnConsulta(detalleData);
         setVistaAtencion(true);
 
+        // Cargar historial médico del paciente
+        if (detalleData.cita?.paciente?.id) {
+          await cargarHistorialMedico(detalleData.cita.paciente.id);
+        }
+
         // Cargar información de consulta si existe
         if (detalleData.informacion_consulta) {
           const diagnosticoIds = detalleData.informacion_consulta.diagnostico_id
@@ -154,6 +165,33 @@ export default function CitasDoctor() {
     } catch (error) {
       console.error("Error al cargar diagnósticos:", error);
     }
+  };
+
+  const cargarHistorialMedico = async (pacienteId) => {
+    setLoadingHistorial(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(
+        `http://localhost:5000/Citas/paciente/${pacienteId}/historial-medico`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data = await response.json();
+      setHistorialMedico(data.historial || []);
+    } catch (error) {
+      console.error("Error al cargar historial médico:", error);
+      setHistorialMedico([]);
+    } finally {
+      setLoadingHistorial(false);
+    }
+  };
+
+  const toggleConsultaExpandida = (citaId) => {
+    setConsultasExpandidas((prev) => ({
+      ...prev,
+      [citaId]: !prev[citaId],
+    }));
   };
 
   const toggleDiagnostico = (diagnosticoId) => {
@@ -440,273 +478,452 @@ export default function CitasDoctor() {
 
     return (
       <div className="space-y-6">
-        {/* Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+        {/* Header Modernizado */}
+        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Atención al Paciente
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                {paciente.nombre} {paciente.apellido_paterno}{" "}
-                {paciente.apellido_materno}
-              </p>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-2xl font-bold">
+                {paciente.nombre?.charAt(0)}{paciente.apellido_paterno?.charAt(0)}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">
+                  {paciente.nombre} {paciente.apellido_paterno} {paciente.apellido_materno}
+                </h1>
+                <p className="text-blue-100 text-sm mt-1">
+                  RUT: {paciente.rut} • Edad: {paciente.fecha_nacimiento ?
+                    new Date().getFullYear() - new Date(paciente.fecha_nacimiento).getFullYear() : 'N/A'} años
+                </p>
+              </div>
             </div>
-            <span className="px-4 py-2 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-sm font-medium">
-              En Consulta
-            </span>
-          </div>
-        </div>
-
-        {/* Información del Paciente */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-            Datos del Paciente
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">RUT</p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {paciente.rut || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Edad</p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {calcularEdad(paciente.fecha_nacimiento)} años
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Sexo</p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {paciente.sexo || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Estado Civil
-              </p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {paciente.estado_civil || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Teléfono
-              </p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {paciente.telefono || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Correo</p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {paciente.correo || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Dirección
-              </p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {paciente.direccion || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Ocupación
-              </p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {paciente.ocupacion || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Persona Responsable
-              </p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {paciente.persona_responsable || "N/A"}
-              </p>
-            </div>
-            <div className="md:col-span-3">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Alergias
-              </p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {paciente.alergias || "Sin alergias registradas"}
-              </p>
+            <div className="flex items-center gap-3">
+              <span className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-medium">
+                ⏱ En Consulta
+              </span>
+              <button
+                onClick={() => setVistaAtencion(false)}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg transition-colors"
+              >
+                ← Volver
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Formulario de Consulta */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-            Información de Consulta
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Motivo de Consulta
-              </label>
-              <textarea
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                rows="3"
-                value={formularioConsulta.motivo_consulta}
-                onChange={(e) =>
-                  setFormularioConsulta({
-                    ...formularioConsulta,
-                    motivo_consulta: e.target.value,
-                  })
-                }
-              />
-            </div>
+        {/* Layout Grid 50/50 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Antecedentes
-              </label>
-              <textarea
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                rows="3"
-                value={formularioConsulta.antecedentes}
-                onChange={(e) =>
-                  setFormularioConsulta({
-                    ...formularioConsulta,
-                    antecedentes: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Dolores y Síntomas
-              </label>
-              <textarea
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                rows="2"
-                placeholder="Si no aplica, dejar vacío"
-                value={formularioConsulta.dolores_sintomas}
-                onChange={(e) =>
-                  setFormularioConsulta({
-                    ...formularioConsulta,
-                    dolores_sintomas: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Atenciones Quirúrgicas Previas
-              </label>
-              <textarea
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                rows="2"
-                placeholder="Si no aplica, dejar vacío"
-                value={formularioConsulta.atenciones_quirurgicas}
-                onChange={(e) =>
-                  setFormularioConsulta({
-                    ...formularioConsulta,
-                    atenciones_quirurgicas: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Evaluación del Doctor
-              </label>
-              <textarea
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                rows="3"
-                value={formularioConsulta.evaluacion_doctor}
-                onChange={(e) =>
-                  setFormularioConsulta({
-                    ...formularioConsulta,
-                    evaluacion_doctor: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Tratamiento
-              </label>
-              <textarea
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                rows="3"
-                value={formularioConsulta.tratamiento}
-                onChange={(e) =>
-                  setFormularioConsulta({
-                    ...formularioConsulta,
-                    tratamiento: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Diagnósticos
-              </label>
-
-              {/* Diagnósticos ya seleccionados */}
-              {formularioConsulta.diagnostico_ids.length > 0 && (
-                <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                  <h4 className="text-sm font-semibold text-green-800 dark:text-green-300 mb-2">
-                    Diagnósticos asignados:
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {formularioConsulta.diagnostico_ids.map((id) => {
-                      const diag = diagnosticos.find((d) => d.id === id);
-                      return diag ? (
-                        <div
-                          key={id}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 rounded-full text-sm"
-                        >
-                          <span>{diag.nombre_enfermedad}</span>
-                          <button
-                            type="button"
-                            onClick={() => eliminarDiagnostico(id)}
-                            className="hover:bg-green-200 dark:hover:bg-green-700 rounded-full p-0.5 transition-colors"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      ) : null;
-                    })}
+          {/* PANEL IZQUIERDO - Consulta Actual */}
+          <div className="space-y-6">
+            {/* Información del Paciente */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Datos del Paciente
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">RUT</p>
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                    {paciente.rut || "N/A"}
+                  </p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Edad</p>
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                    {calcularEdad(paciente.fecha_nacimiento)} años
+                  </p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Sexo</p>
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                    {paciente.sexo || "N/A"}
+                  </p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Teléfono</p>
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                    {paciente.telefono || "N/A"}
+                  </p>
+                </div>
+                {paciente.alergias && (
+                  <div className="col-span-2 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
+                    <p className="text-xs text-red-600 dark:text-red-400 font-medium">⚠️ Alergias</p>
+                    <p className="font-semibold text-red-900 dark:text-red-200 text-sm mt-1">
+                      {paciente.alergias}
+                    </p>
                   </div>
+                )}
+              </div>
+            </div>
+
+            {/* Formulario de Consulta */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Información de Consulta
+              </h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Motivo de Consulta
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    rows="2"
+                    value={formularioConsulta.motivo_consulta}
+                    onChange={(e) =>
+                      setFormularioConsulta({
+                        ...formularioConsulta,
+                        motivo_consulta: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Antecedentes
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    rows="2"
+                    value={formularioConsulta.antecedentes}
+                    onChange={(e) =>
+                      setFormularioConsulta({
+                        ...formularioConsulta,
+                        antecedentes: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Dolores y Síntomas
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    rows="2"
+                    placeholder="Si no aplica, dejar vacío"
+                    value={formularioConsulta.dolores_sintomas}
+                    onChange={(e) =>
+                      setFormularioConsulta({
+                        ...formularioConsulta,
+                        dolores_sintomas: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Atenciones Quirúrgicas Previas
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    rows="2"
+                    placeholder="Si no aplica, dejar vacío"
+                    value={formularioConsulta.atenciones_quirurgicas}
+                    onChange={(e) =>
+                      setFormularioConsulta({
+                        ...formularioConsulta,
+                        atenciones_quirurgicas: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Evaluación del Doctor
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    rows="2"
+                    value={formularioConsulta.evaluacion_doctor}
+                    onChange={(e) =>
+                      setFormularioConsulta({
+                        ...formularioConsulta,
+                        evaluacion_doctor: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Tratamiento
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    rows="2"
+                    value={formularioConsulta.tratamiento}
+                    onChange={(e) =>
+                      setFormularioConsulta({
+                        ...formularioConsulta,
+                        tratamiento: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Diagnósticos
+                  </label>
+
+                  {/* Diagnósticos ya seleccionados */}
+                  {formularioConsulta.diagnostico_ids.length > 0 && (
+                    <div className="mb-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <h4 className="text-xs font-semibold text-green-800 dark:text-green-300 mb-1">
+                        Diagnósticos asignados:
+                      </h4>
+                      <div className="flex flex-wrap gap-1">
+                        {formularioConsulta.diagnostico_ids.map((id) => {
+                          const diag = diagnosticos.find((d) => d.id === id);
+                          return diag ? (
+                            <div
+                              key={id}
+                              className="flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-100 rounded-full text-xs"
+                            >
+                              <span>{diag.nombre_enfermedad}</span>
+                              <button
+                                type="button"
+                                onClick={() => eliminarDiagnostico(id)}
+                                className="hover:bg-green-200 dark:hover:bg-green-700 rounded-full p-0.5 transition-colors"
+                              >
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : null;
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Buscador */}
+                  <div className="mb-2">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Buscar enfermedad..."
+                        value={busquedaDiagnostico}
+                        onChange={(e) => setBusquedaDiagnostico(e.target.value)}
+                        className="w-full px-3 py-2 pl-8 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                      />
+                      <svg
+                        className="absolute left-2 top-2.5 w-4 h-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Lista de diagnósticos con checkboxes */}
+                  <div className="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 max-h-40 overflow-y-auto">
+                    {diagnosticosFiltrados.length > 0 ? (
+                      <div className="divide-y divide-gray-200 dark:divide-gray-600">
+                        {diagnosticosFiltrados.map((diag) => (
+                          <label
+                            key={diag.id}
+                            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={diagnosticosSeleccionados.includes(diag.id)}
+                              onChange={() => toggleDiagnostico(diag.id)}
+                              className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+                            />
+                            <span className="text-xs text-gray-700 dark:text-gray-300">
+                              {diag.nombre_enfermedad}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-4 text-center text-gray-500 dark:text-gray-400 text-xs">
+                        {busquedaDiagnostico
+                          ? "No se encontraron diagnósticos"
+                          : "No hay diagnósticos disponibles"}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Botones de acción */}
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={aplicarDiagnosticos}
+                      disabled={diagnosticosSeleccionados.length === 0}
+                      className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors text-xs"
+                    >
+                      Asignar ({diagnosticosSeleccionados.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={limpiarSeleccionDiagnosticos}
+                      className="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors text-xs"
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recetas */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                Receta Médica
+              </h2>
+
+              {/* Lista de medicamentos agregados */}
+              {formularioConsulta.recetas.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  {formularioConsulta.recetas.map((receta, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                          {receta.nombre}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          {receta.presentacion} - {receta.dosis} - {receta.duracion} - {receta.cantidad} cajas
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => eliminarReceta(index)}
+                        className="px-2 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs transition-colors"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
 
-              {/* Buscador */}
-              <div className="mb-3">
-                <div className="relative">
+              {/* Formulario para agregar medicamento */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nombre del Medicamento *
+                  </label>
                   <input
                     type="text"
-                    placeholder="Buscar enfermedad..."
-                    value={busquedaDiagnostico}
-                    onChange={(e) => setBusquedaDiagnostico(e.target.value)}
-                    className="w-full px-4 py-2 pl-10 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    value={nuevaReceta.nombre}
+                    onChange={(e) =>
+                      setNuevaReceta({ ...nuevaReceta, nombre: e.target.value })
+                    }
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Presentación
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Comprimidos"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    value={nuevaReceta.presentacion}
+                    onChange={(e) =>
+                      setNuevaReceta({
+                        ...nuevaReceta,
+                        presentacion: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Dosis
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: 1 cada 8 horas"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    value={nuevaReceta.dosis}
+                    onChange={(e) =>
+                      setNuevaReceta({ ...nuevaReceta, dosis: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Duración
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: 7 días"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    value={nuevaReceta.duracion}
+                    onChange={(e) =>
+                      setNuevaReceta({ ...nuevaReceta, duracion: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Cantidad de Cajas
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: 2"
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white text-sm"
+                    value={nuevaReceta.cantidad}
+                    onChange={(e) =>
+                      setNuevaReceta({ ...nuevaReceta, cantidad: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={agregarReceta}
+                className="mt-3 w-full px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                + Agregar Medicamento
+              </button>
+            </div>
+
+            {/* Botones de Acción */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={handleGenerarReceta}
+                  className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+                >
                   <svg
-                    className="absolute left-3 top-2.5 w-5 h-5 text-gray-400"
+                    className="w-4 h-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -715,220 +932,227 @@ export default function CitasDoctor() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
                     />
                   </svg>
-                </div>
+                  <span className="text-sm">Generar PDF</span>
+                </button>
+                <button
+                  onClick={guardarBorrador}
+                  className="px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-semibold transition-colors text-sm"
+                >
+                  💾 Guardar Borrador
+                </button>
+                <button
+                  onClick={finalizarConsulta}
+                  className="px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors text-sm"
+                >
+                  ✓ Finalizar Consulta
+                </button>
               </div>
+            </div>
+          </div>
 
-              {/* Lista de diagnósticos con checkboxes */}
-              <div className="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 max-h-64 overflow-y-auto">
-                {diagnosticosFiltrados.length > 0 ? (
-                  <div className="divide-y divide-gray-200 dark:divide-gray-600">
-                    {diagnosticosFiltrados.map((diag) => (
-                      <label
-                        key={diag.id}
-                        className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors"
+          {/* PANEL DERECHO - Historial Médico */}
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 h-full">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Historial Médico
+                <span className="ml-auto text-sm font-normal text-gray-500">
+                  {historialMedico.length} consulta{historialMedico.length !== 1 ? 's' : ''}
+                </span>
+              </h2>
+
+              {/* Loading State */}
+              {loadingHistorial && (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!loadingHistorial && historialMedico.length === 0 && (
+                <div className="text-center py-12">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">Sin historial</h3>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Este paciente no tiene consultas previas registradas.
+                  </p>
+                </div>
+              )}
+
+              {/* Lista de Consultas Previas */}
+              {!loadingHistorial && historialMedico.length > 0 && (
+                <div className="space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+                  {historialMedico.map((consulta) => (
+                    <motion.div
+                      key={consulta.cita_id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+                    >
+                      {/* Header de la Consulta */}
+                      <button
+                        onClick={() => toggleConsultaExpandida(consulta.cita_id)}
+                        className="w-full px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/30 dark:hover:to-purple-900/30 transition-colors flex items-center justify-between"
                       >
-                        <input
-                          type="checkbox"
-                          checked={diagnosticosSeleccionados.includes(diag.id)}
-                          onChange={() => toggleDiagnostico(diag.id)}
-                          className="w-5 h-5 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 dark:focus:ring-green-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          {diag.nombre_enfermedad}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                    {busquedaDiagnostico
-                      ? "No se encontraron diagnósticos"
-                      : "No hay diagnósticos disponibles"}
-                  </div>
-                )}
-              </div>
+                        <div className="flex-1 text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {new Date(consulta.fecha_atencion).toLocaleDateString('es-CL', {
+                                day: '2-digit',
+                                month: 'long',
+                                year: 'numeric'
+                              })}
+                            </span>
+                            {consulta.especialidad && (
+                              <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-full text-xs">
+                                {consulta.especialidad.nombre}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                            Dr. {consulta.doctor?.nombre} {consulta.doctor?.apellido_paterno} {consulta.doctor?.apellido_materno}
+                          </p>
+                        </div>
+                        <svg
+                          className={`w-5 h-5 text-gray-500 transition-transform ${
+                            consultasExpandidas[consulta.cita_id] ? 'rotate-180' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
 
-              {/* Botones de acción */}
-              <div className="flex gap-2 mt-3">
-                <button
-                  type="button"
-                  onClick={aplicarDiagnosticos}
-                  disabled={diagnosticosSeleccionados.length === 0}
-                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
-                >
-                  Asignar seleccionados ({diagnosticosSeleccionados.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={limpiarSeleccionDiagnosticos}
-                  className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors"
-                >
-                  Limpiar
-                </button>
-              </div>
+                      {/* Contenido Expandible */}
+                      <AnimatePresence>
+                        {consultasExpandidas[consulta.cita_id] && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-4 py-3 bg-white dark:bg-gray-800 space-y-3">
+                              {/* Motivo de Consulta */}
+                              {consulta.informacion_consulta?.motivo_consulta && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    Motivo de Consulta
+                                  </p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-2 rounded">
+                                    {consulta.informacion_consulta.motivo_consulta}
+                                  </p>
+                                </div>
+                              )}
 
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                Selecciona una o más enfermedades y presiona "Asignar
-                seleccionados"
-              </p>
-            </div>
-          </div>
-        </div>
+                              {/* Antecedentes */}
+                              {consulta.informacion_consulta?.antecedentes && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    Antecedentes
+                                  </p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-2 rounded">
+                                    {consulta.informacion_consulta.antecedentes}
+                                  </p>
+                                </div>
+                              )}
 
-        {/* Recetas */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-            Receta Médica
-          </h2>
+                              {/* Síntomas */}
+                              {consulta.informacion_consulta?.dolores_sintomas && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    Síntomas
+                                  </p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-2 rounded">
+                                    {consulta.informacion_consulta.dolores_sintomas}
+                                  </p>
+                                </div>
+                              )}
 
-          {/* Lista de medicamentos agregados */}
-          {formularioConsulta.recetas.length > 0 && (
-            <div className="mb-6 space-y-2">
-              {formularioConsulta.recetas.map((receta, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                >
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 dark:text-white">
-                      {receta.nombre}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {receta.presentacion} - {receta.dosis} - {receta.duracion}{" "}
-                      - {receta.cantidad} cajas
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => eliminarReceta(index)}
-                    className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm transition-colors"
-                  >
-                    Eliminar
-                  </button>
+                              {/* Evaluación */}
+                              {consulta.informacion_consulta?.evaluacion_doctor && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    Evaluación Médica
+                                  </p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-2 rounded">
+                                    {consulta.informacion_consulta.evaluacion_doctor}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Diagnóstico */}
+                              {consulta.informacion_consulta?.diagnostico && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    Diagnóstico
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-xs font-medium">
+                                      {consulta.informacion_consulta.diagnostico.nombre_enfermedad}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Tratamiento */}
+                              {consulta.informacion_consulta?.tratamiento && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    Tratamiento
+                                  </p>
+                                  <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-2 rounded">
+                                    {consulta.informacion_consulta.tratamiento}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* Recetas */}
+                              {consulta.recetas && consulta.recetas.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                                    Medicamentos Recetados
+                                  </p>
+                                  <div className="space-y-2">
+                                    {consulta.recetas.map((receta, idx) => (
+                                      <div
+                                        key={idx}
+                                        className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded border border-purple-200 dark:border-purple-800"
+                                      >
+                                        <p className="text-xs font-semibold text-purple-900 dark:text-purple-100">
+                                          {receta.nombre}
+                                        </p>
+                                        <p className="text-xs text-purple-700 dark:text-purple-300 mt-1">
+                                          {receta.presentacion} • {receta.dosis}
+                                        </p>
+                                        <p className="text-xs text-purple-600 dark:text-purple-400">
+                                          Duración: {receta.duracion} • Cantidad: {receta.cantidad}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Formulario para agregar medicamento */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Nombre del Medicamento *
-              </label>
-              <input
-                type="text"
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                value={nuevaReceta.nombre}
-                onChange={(e) =>
-                  setNuevaReceta({ ...nuevaReceta, nombre: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Presentación
-              </label>
-              <input
-                type="text"
-                placeholder="Ej: Comprimidos, Jarabe, etc."
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                value={nuevaReceta.presentacion}
-                onChange={(e) =>
-                  setNuevaReceta({
-                    ...nuevaReceta,
-                    presentacion: e.target.value,
-                  })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Dosis
-              </label>
-              <input
-                type="text"
-                placeholder="Ej: 1 cada 8 horas"
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                value={nuevaReceta.dosis}
-                onChange={(e) =>
-                  setNuevaReceta({ ...nuevaReceta, dosis: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Duración
-              </label>
-              <input
-                type="text"
-                placeholder="Ej: 7 días"
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                value={nuevaReceta.duracion}
-                onChange={(e) =>
-                  setNuevaReceta({ ...nuevaReceta, duracion: e.target.value })
-                }
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Cantidad de Cajas
-              </label>
-              <input
-                type="text"
-                placeholder="Ej: 2"
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-900 dark:text-white"
-                value={nuevaReceta.cantidad}
-                onChange={(e) =>
-                  setNuevaReceta({ ...nuevaReceta, cantidad: e.target.value })
-                }
-              />
+              )}
             </div>
           </div>
-
-          <button
-            onClick={agregarReceta}
-            className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
-          >
-            Agregar Medicamento
-          </button>
-        </div>
-
-        {/* Botones de Acción */}
-        <div className="flex gap-4">
-          <button
-            onClick={handleGenerarReceta}
-            className="flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-              />
-            </svg>
-            Generar Receta PDF
-          </button>
-          <button
-            onClick={guardarBorrador}
-            className="flex-1 px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-semibold transition-colors"
-          >
-            Guardar Borrador
-          </button>
-          <button
-            onClick={finalizarConsulta}
-            className="flex-1 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-colors"
-          >
-            Finalizar Consulta
-          </button>
         </div>
       </div>
     );
