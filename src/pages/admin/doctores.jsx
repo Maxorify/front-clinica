@@ -255,21 +255,34 @@ export default function Doctores() {
 
   const handleGenerarClave = async (doctorId) => {
     try {
-      const claveTemp = generarClaveTemporal();
-
-      // Llamar al endpoint para guardar la clave temporal en la BD
-      await axios.post(
-        `${API_URL}/Usuarios/generar-clave-temporal/${doctorId}`,
-        null,
-        { params: { contraseña_temporal: claveTemp } }
+      // Primero verificar si ya existe una clave temporal
+      const responseExistente = await axios.get(
+        `${API_URL}/Usuarios/obtener-clave-temporal/${doctorId}`
       );
 
-      setTempPassword(claveTemp);
-      setShowPasswordModal(true);
-      showNotification("success", "Clave temporal generada correctamente");
+      if (responseExistente.data.tiene_clave) {
+        // Ya existe una clave temporal, mostrarla
+        setTempPassword(responseExistente.data.contraseña_temporal);
+        setShowPasswordModal(true);
+        showNotification("info", "Mostrando clave temporal existente");
+      } else {
+        // No existe, generar una nueva
+        const claveTemp = generarClaveTemporal();
+
+        // Llamar al endpoint para guardar la clave temporal en la BD
+        await axios.post(
+          `${API_URL}/Usuarios/generar-clave-temporal/${doctorId}`,
+          null,
+          { params: { contraseña_temporal: claveTemp } }
+        );
+
+        setTempPassword(claveTemp);
+        setShowPasswordModal(true);
+        showNotification("success", "Clave temporal generada correctamente");
+      }
     } catch (error) {
-      console.error("Error al generar clave temporal:", error);
-      showNotification("error", "Error al generar clave temporal");
+      console.error("Error al manejar clave temporal:", error);
+      showNotification("error", "Error al obtener/generar clave temporal");
     }
   };
 
@@ -342,6 +355,8 @@ export default function Doctores() {
               className={`max-w-sm rounded-xl border shadow-2xl px-4 py-3 backdrop-blur bg-white/90 dark:bg-gray-900/90 ${
                 notification.type === "success"
                   ? "border-emerald-500"
+                  : notification.type === "info"
+                  ? "border-blue-500"
                   : "border-red-500"
               }`}
             >
@@ -350,6 +365,8 @@ export default function Doctores() {
                   className={`mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full ${
                     notification.type === "success"
                       ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-100"
+                      : notification.type === "info"
+                      ? "bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-100"
                       : "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-100"
                   }`}
                 >
@@ -365,6 +382,20 @@ export default function Doctores() {
                         strokeLinejoin="round"
                         strokeWidth={2}
                         d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  ) : notification.type === "info" ? (
+                    <svg
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                       />
                     </svg>
                   ) : (

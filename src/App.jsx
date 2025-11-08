@@ -36,6 +36,7 @@ import EditarPerfil from "./pages/secretaria/editarPerfil";
 import CheckingPacientes from "./pages/secretaria/checkingPacientes";
 import Recepcion from "./pages/secretaria/recepcion";
 import PacientesSecretaria from "./pages/secretaria/pacientes";
+import AsistenciaSecretaria from "./pages/secretaria/asistencia";
 
 import "./App.css";
 
@@ -115,6 +116,7 @@ function App() {
             path="/secretaria/pacientes"
             element={<PacientesSecretaria />}
           />
+          <Route path="/secretaria/asistencia" element={<AsistenciaSecretaria />} />
           <Route path="/secretaria/editar-perfil" element={<EditarPerfil />} />
           <Route
             path="/secretaria/boletas-generadas"
