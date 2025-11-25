@@ -14,6 +14,7 @@ export default function Doctores() {
   const [notification, setNotification] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [tempPassword, setTempPassword] = useState("");
+  const [popoverDoctorId, setPopoverDoctorId] = useState(null);
 
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -289,6 +290,16 @@ export default function Doctores() {
   const copiarClave = () => {
     navigator.clipboard.writeText(tempPassword);
     showNotification("success", "Clave copiada al portapapeles");
+  };
+
+  const copiarClavePopover = (clave) => {
+    navigator.clipboard.writeText(clave);
+    showNotification("success", "Clave copiada al portapapeles");
+    setPopoverDoctorId(null);
+  };
+
+  const togglePopover = (doctorId) => {
+    setPopoverDoctorId(popoverDoctorId === doctorId ? null : doctorId);
   };
 
   const cerrarModal = () => {
@@ -634,12 +645,82 @@ export default function Doctores() {
                 >
                   Editar
                 </button>
-                <button
-                  onClick={() => handleGenerarClave(doctor.id)}
-                  className="flex-1 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium"
-                >
-                  Clave Temporal
-                </button>
+                <div className="relative flex-1">
+                  <button
+                    onClick={() => togglePopover(doctor.id)}
+                    className="w-full px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Clave Temporal
+                  </button>
+
+                  {/* Popover de Clave Temporal */}
+                  <AnimatePresence>
+                    {popoverDoctorId === doctor.id && doctor.contraseña_temporal && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50"
+                      >
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 min-w-[200px]">
+                          {/* Flecha del popover */}
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                            <div className="border-8 border-transparent border-t-white dark:border-t-gray-800"></div>
+                          </div>
+                          <div className="absolute top-full left-1/2 -translate-x-1/2">
+                            <div className="border-8 border-transparent border-t-gray-200 dark:border-t-gray-700 -mt-px"></div>
+                          </div>
+
+                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                            Clave Temporal
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 text-sm font-mono font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded break-all">
+                              {doctor.contraseña_temporal}
+                            </code>
+                            <button
+                              onClick={() => copiarClavePopover(doctor.contraseña_temporal)}
+                              className="p-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors flex-shrink-0"
+                              title="Copiar clave"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Mensaje si no tiene clave temporal */}
+                  <AnimatePresence>
+                    {popoverDoctorId === doctor.id && !doctor.contraseña_temporal && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50"
+                      >
+                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 min-w-[200px]">
+                          {/* Flecha del popover */}
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                            <div className="border-8 border-transparent border-t-white dark:border-t-gray-800"></div>
+                          </div>
+                          <div className="absolute top-full left-1/2 -translate-x-1/2">
+                            <div className="border-8 border-transparent border-t-gray-200 dark:border-t-gray-700 -mt-px"></div>
+                          </div>
+
+                          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                            Sin clave temporal
+                          </p>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <button
                   onClick={() =>
                     handleDelete(

@@ -1,9 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import fondo from "../../assets/fondo.jpg";
 
 const API_URL = 'http://localhost:5000';
+
+// Función para cerrar sesión
+const handleLogout = (navigate) => {
+  localStorage.removeItem('user');
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('user_id');
+  localStorage.removeItem('user_name');
+  localStorage.removeItem('user_role');
+  navigate('/', { replace: true });
+};
 
 export default function CambiarContrasena() {
   const navigate = useNavigate();
@@ -14,6 +26,35 @@ export default function CambiarContrasena() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Verificar que el usuario tenga contraseña temporal al cargar
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    try {
+      const user = JSON.parse(userStr);
+      // Si el usuario NO tiene contraseña temporal, redirigir a su dashboard
+      if (!user.contrasena_temporal) {
+        if (user.rol_nombre === 'medico') {
+          navigate('/doctor/dashboard', { replace: true });
+        } else if (user.rol_nombre === 'admin') {
+          navigate('/admin/dashboard', { replace: true });
+        } else if (user.rol_nombre === 'secretaria') {
+          navigate('/secretaria/dashboard', { replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
+      }
+    } catch (error) {
+      console.error('Error al verificar usuario:', error);
+      navigate('/', { replace: true });
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -65,15 +106,17 @@ export default function CambiarContrasena() {
       };
       localStorage.setItem('user', JSON.stringify(updatedUser));
 
-      // Mostrar mensaje de éxito
-      alert('Contraseña actualizada exitosamente');
+      // Activar animación de salida
+      setIsRedirecting(true);
 
       // Redirigir según el rol
-      if (user.rol_id === 2) {
-        navigate('/doctor/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+      setTimeout(() => {
+        if (user.rol_id === 2) {
+          navigate('/doctor/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
+      }, 400);
     } catch (err) {
       console.error('Error al cambiar contraseña:', err);
       setError(err.response?.data?.detail || 'Error al cambiar la contraseña. Intente nuevamente.');
@@ -83,22 +126,40 @@ export default function CambiarContrasena() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
+    <div
+      className="min-h-screen flex items-center justify-start relative bg-cover bg-center"
+      style={{ backgroundImage: `url(${fondo})` }}
+    >
+      {/* Botón Cerrar Sesión - Esquina inferior izquierda */}
+      <button
+        onClick={() => handleLogout(navigate)}
+        className="fixed bottom-6 left-6 flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-red-600 rounded-lg shadow-lg transition-all duration-200 backdrop-blur-sm border border-red-200 hover:border-red-300 z-50"
       >
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span className="text-sm font-medium">Cerrar Sesión</span>
+      </button>
+
+      <motion.div
+        initial={{ opacity: 0, x: -30 }}
+        animate={
+          isRedirecting
+            ? { opacity: 0, x: 50, scale: 0.95 }
+            : { opacity: 1, x: 0, scale: 1 }
+        }
+        transition={{ duration: 0.4, ease: "easeInOut" }}
+        className="w-full max-w-md ml-8 md:ml-16 lg:ml-24"
+      >
+        <div className="bg-white/95 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-sm">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 p-8 text-center">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-8 text-center">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
             >
-              <div className="w-20 h-20 bg-white dark:bg-gray-800 rounded-full mx-auto flex items-center justify-center mb-4">
+              <div className="w-20 h-20 bg-white rounded-full mx-auto flex items-center justify-center mb-4">
                 <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                 </svg>
@@ -110,16 +171,16 @@ export default function CambiarContrasena() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <div>
-                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-400">
+                  <p className="text-sm font-medium text-yellow-800">
                     Primer inicio de sesión
                   </p>
-                  <p className="text-xs text-yellow-700 dark:text-yellow-500 mt-1">
+                  <p className="text-xs text-yellow-700 mt-1">
                     Por seguridad, debe cambiar su contraseña temporal antes de continuar.
                   </p>
                 </div>
@@ -130,20 +191,20 @@ export default function CambiarContrasena() {
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
+                className="bg-red-50 border border-red-200 rounded-lg p-4"
               >
                 <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-sm text-red-800 dark:text-red-400">{error}</p>
+                  <p className="text-sm text-red-800">{error}</p>
                 </div>
               </motion.div>
             )}
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Nueva Contraseña *
                 </label>
                 <div className="relative">
@@ -152,7 +213,7 @@ export default function CambiarContrasena() {
                     name="nuevaContrasena"
                     value={formData.nuevaContrasena}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white pr-12"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 pr-12"
                     placeholder="Ingrese su nueva contraseña"
                     required
                     minLength={8}
@@ -160,7 +221,7 @@ export default function CambiarContrasena() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   >
                     {showPassword ? (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,13 +235,13 @@ export default function CambiarContrasena() {
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Mínimo 8 caracteres
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Confirmar Contraseña *
                 </label>
                 <input
@@ -188,7 +249,7 @@ export default function CambiarContrasena() {
                   name="confirmarContrasena"
                   value={formData.confirmarContrasena}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                   placeholder="Confirme su nueva contraseña"
                   required
                   minLength={8}
@@ -199,7 +260,7 @@ export default function CambiarContrasena() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
             >
               {loading ? (
                 <>
@@ -220,10 +281,6 @@ export default function CambiarContrasena() {
             </button>
           </form>
         </div>
-
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
-          Sistema de Gestión Clínica
-        </p>
       </motion.div>
     </div>
   );

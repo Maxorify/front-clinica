@@ -11,7 +11,13 @@ export default function DashboardSecretaria() {
     total_citas: 0,
     confirmadas: 0,
     pendientes: 0,
+    en_consulta: 0,
     total_ingresos: 0
+  });
+  const [citasPendientes, setCitasPendientes] = useState([]);
+  const [actividadReciente, setActividadReciente] = useState({
+    pagos_recientes: [],
+    citas_recientes: []
   });
   const [loading, setLoading] = useState(false);
 
@@ -23,10 +29,10 @@ export default function DashboardSecretaria() {
     return () => clearInterval(interval);
   }, []);
 
-  // Cargar estadísticas al montar el componente
+  // Cargar datos al montar el componente
   useEffect(() => {
     const abortController = new AbortController();
-    cargarEstadisticas(abortController.signal);
+    cargarDatos(abortController.signal);
 
     // Cleanup: cancelar peticiones pendientes cuando se desmonte el componente
     return () => {
@@ -34,81 +40,76 @@ export default function DashboardSecretaria() {
     };
   }, []);
 
-  const cargarEstadisticas = async (signal) => {
+  const cargarDatos = async (signal) => {
     setLoading(true);
     try {
-      const fechaHoy = new Date().toISOString().split('T')[0];
+      // Obtener fecha local en formato YYYY-MM-DD (NO usar UTC)
+      const hoy = new Date();
+      const año = hoy.getFullYear();
+      const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+      const dia = String(hoy.getDate()).padStart(2, '0');
+      const fechaHoy = `${año}-${mes}-${dia}`;
 
-      // Obtener estadísticas de citas
-      const citasResponse = await axios.get(`${API_URL}/Citas/estadisticas`, {
-        params: { fecha: fechaHoy },
-        signal
-      });
-
-      // Obtener ingresos del día
-      const ingresosResponse = await axios.get(`${API_URL}/Citas/ingresos`, {
-        params: { fecha: fechaHoy },
-        signal
-      });
+      // Llamadas en paralelo
+      const [estadisticasRes, citasPendientesRes, actividadRes, ingresosRes] = await Promise.all([
+        axios.get(`${API_URL}/Citas/estadisticas`, { params: { fecha: fechaHoy }, signal }),
+        axios.get(`${API_URL}/Citas/hoy/pendientes`, { signal }),
+        axios.get(`${API_URL}/Citas/actividad-reciente`, { signal }),
+        axios.get(`${API_URL}/Citas/ingresos`, { params: { fecha: fechaHoy }, signal })
+      ]);
 
       setEstadisticas({
-        total_citas: citasResponse.data.total || 0,
-        confirmadas: citasResponse.data.confirmadas || 0,
-        pendientes: citasResponse.data.pendientes || 0,
-        total_ingresos: ingresosResponse.data.total_ingresos || 0
+        total_citas: estadisticasRes.data.total || 0,
+        confirmadas: estadisticasRes.data.confirmadas || 0,
+        pendientes: estadisticasRes.data.pendientes || 0,
+        en_consulta: estadisticasRes.data.en_consulta || 0,
+        total_ingresos: ingresosRes.data.total_ingresos || 0
       });
+
+      setCitasPendientes(citasPendientesRes.data.citas || []);
+      setActividadReciente(actividadRes.data || { pagos_recientes: [], citas_recientes: [] });
+
     } catch (error) {
-      // Ignorar errores de cancelación
       if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
         console.log('Petición cancelada correctamente');
         return;
       }
-      console.error('Error al cargar estadísticas:', error);
+      console.error('Error al cargar datos:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const citasHoy = [
-    { id: 1, hora: '09:00', paciente: 'Mar�a Gonz�lez', doctor: 'Dr. Garc�a', estado: 'Confirmada' },
-    { id: 2, hora: '09:30', paciente: 'Juan P�rez', doctor: 'Dra. Mart�nez', estado: 'En espera' },
-    { id: 3, hora: '10:00', paciente: 'Ana L�pez', doctor: 'Dr. Garc�a', estado: 'En consulta' },
-    { id: 4, hora: '10:30', paciente: 'Carlos Ruiz', doctor: 'Dr. Rodr�guez', estado: 'Confirmada' },
-    { id: 5, hora: '11:00', paciente: 'Laura Torres', doctor: 'Dra. Mart�nez', estado: 'Pendiente' },
-  ];
-
-  const proximasTareas = [
-    { id: 1, tarea: 'Confirmar cita de Carlos Ruiz', prioridad: 'Alta', hora: '10:15' },
-    { id: 2, tarea: 'Llamar a Laura Torres', prioridad: 'Media', hora: '10:45' },
-    { id: 3, tarea: 'Preparar documentos para nueva paciente', prioridad: 'Baja', hora: '11:30' },
-  ];
+  const handleCitaClick = (citaId) => {
+    navigate(`/secretaria/recepcion?citaId=${citaId}`);
+  };
 
   const getEstadoColor = (estado) => {
     switch (estado) {
       case 'Confirmada':
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      case 'En espera':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'En consulta':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
       case 'Pendiente':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400';
+      case 'En Consulta':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'Completada':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
     }
   };
 
-  const getPrioridadColor = (prioridad) => {
-    switch (prioridad) {
-      case 'Alta':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-      case 'Media':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
-      case 'Baja':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
-    }
+  const formatearHora = (fechaISO) => {
+    if (!fechaISO) return '--:--';
+    const fecha = new Date(fechaISO);
+    console.log('Fecha ISO recibida:', fechaISO, '-> Convertida a local:', fecha.toString());
+    return fecha.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
+  };
+
+  const formatearFechaHora = (fechaISO) => {
+    if (!fechaISO) return '--:--:--';
+    const fecha = new Date(fechaISO);
+    return fecha.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'America/Santiago' });
   };
 
   return (
@@ -116,8 +117,8 @@ export default function DashboardSecretaria() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard Secretar�a</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Bienvenida, gestiona las operaciones del d�a</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard Secretaría</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Bienvenida, gestiona las operaciones del día</p>
         </div>
         <div className="text-right">
           <p className="text-sm text-gray-600 dark:text-gray-400">Hora actual</p>
@@ -229,99 +230,152 @@ export default function DashboardSecretaria() {
         </div>
       </div>
 
-      {/* Citas de Hoy */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Citas de Hoy</h2>
-        </div>
-        <div className="p-6">
-          <div className="space-y-3">
-            {citasHoy.map((cita) => (
-              <div
-                key={cita.id}
-                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="text-center">
-                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-500">{cita.hora}</p>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 dark:text-white">{cita.paciente}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{cita.doctor}</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getEstadoColor(cita.estado)}`}>
-                    {cita.estado}
-                  </span>
-                </div>
-              </div>
-            ))}
+      {/* Layout de 2 columnas */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {/* Citas Pendientes del Día - 2 columnas */}
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Citas Pendientes del Día</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Próximas a atender - Click para procesar pago
+              </p>
+            </div>
+            <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 px-3 py-1 rounded-full text-sm font-medium">
+              {citasPendientes.length} pendientes
+            </span>
           </div>
-          <button
-            onClick={() => navigate('/secretaria/recepcion')}
-            className="w-full mt-4 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors font-medium"
-          >
-            Ver Todas las Citas
-          </button>
+          <div className="p-6">
+            {loading ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">Cargando...</div>
+            ) : citasPendientes.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-gray-600 dark:text-gray-400 font-medium">No hay citas pendientes</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Todas las citas del día están confirmadas</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                {citasPendientes.map((cita) => (
+                  <div
+                    key={cita.id}
+                    onClick={() => handleCitaClick(cita.id)}
+                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer group border-l-4 border-amber-500"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="text-center bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                        <p className="text-2xl font-bold text-amber-600 dark:text-amber-500">{formatearHora(cita.fecha_atencion)}</p>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors">
+                          {cita.paciente?.nombre} {cita.paciente?.apellido_paterno} {cita.paciente?.apellido_materno}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className="font-medium">Doctor:</span> Dr. {cita.doctor?.nombre} {cita.doctor?.apellido_paterno}
+                          </p>
+                          {cita.especialidad && (
+                            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 px-2 py-1 rounded-full">
+                              {cita.especialidad.nombre}
+                            </span>
+                          )}
+                        </div>
+                        {cita.paciente?.telefono && (
+                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Tel: {cita.paciente.telefono}</p>
+                        )}
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getEstadoColor(cita.estado_actual)}`}>
+                        {cita.estado_actual}
+                      </span>
+                    </div>
+                    <svg className="w-5 h-5 text-gray-400 group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Acciones R�pidas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors group">
-            <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-gray-900 dark:text-white">Nueva Cita</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Agendar cita</p>
-            </div>
-          </button>
+        {/* Actividad Reciente - 1 columna */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Actividad Reciente</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Últimas operaciones del día</p>
+          </div>
+          <div className="p-6">
+            <div className="space-y-6 max-h-[600px] overflow-y-auto">
 
-          <button
-            onClick={() => navigate('/secretaria/recepcion')}
-            className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors group"
-          >
-            <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-gray-900 dark:text-white">Recepción</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Procesar pagos</p>
-            </div>
-          </button>
+              {/* Pagos Recientes */}
+              {actividadReciente.pagos_recientes?.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Pagos Procesados
+                  </h3>
+                  <div className="space-y-2">
+                    {actividadReciente.pagos_recientes.slice(0, 5).map((pago) => (
+                      <div key={pago.id} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {pago.paciente?.nombre} {pago.paciente?.apellido_paterno}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">{pago.tipo_pago} - {formatearFechaHora(pago.fecha_pago)}</p>
+                        </div>
+                        <span className="text-sm font-bold text-green-700 dark:text-green-400">
+                          ${new Intl.NumberFormat('es-CL').format(pago.total)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          <button
-            onClick={() => navigate('/secretaria/recepcion')}
-            className="flex items-center gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors group"
-          >
-            <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-gray-900 dark:text-white">Sala de Espera</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Ver pacientes</p>
-            </div>
-          </button>
+              {/* Citas Recientes */}
+              {actividadReciente.citas_recientes?.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Últimas Citas
+                  </h3>
+                  <div className="space-y-2">
+                    {actividadReciente.citas_recientes.slice(0, 5).map((cita) => (
+                      <div key={cita.id} className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {cita.paciente?.nombre} {cita.paciente?.apellido_paterno}
+                          </p>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getEstadoColor(cita.estado_actual)}`}>
+                            {cita.estado_actual}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Dr. {cita.doctor?.nombre} {cita.doctor?.apellido_paterno} - {formatearHora(cita.fecha_atencion)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          <button className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg transition-colors group">
-            <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center text-white group-hover:scale-110 transition-transform">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              {actividadReciente.pagos_recientes?.length === 0 && actividadReciente.citas_recientes?.length === 0 && (
+                <div className="text-center py-12">
+                  <svg className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">No hay actividad reciente</p>
+                </div>
+              )}
             </div>
-            <div className="text-left">
-              <p className="font-semibold text-gray-900 dark:text-white">Reportes</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Ver reportes</p>
-            </div>
-          </button>
+          </div>
         </div>
       </div>
     </div>

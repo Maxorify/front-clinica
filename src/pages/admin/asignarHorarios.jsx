@@ -23,6 +23,7 @@ export default function AsignarHorarios() {
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [horarioAEliminar, setHorarioAEliminar] = useState(null);
+  const [mesVistaPrevia, setMesVistaPrevia] = useState(new Date()); // Mes actual en la vista previa
 
   const [formData, setFormData] = useState({
     fecha_inicio: new Date().toISOString().split('T')[0],
@@ -67,6 +68,13 @@ export default function AsignarHorarios() {
     const timer = setTimeout(() => setNotification(null), 4000);
     return () => clearTimeout(timer);
   }, [notification]);
+
+  // Sincronizar mesVistaPrevia con fecha_inicio cuando cambie
+  useEffect(() => {
+    if (formData.fecha_inicio) {
+      setMesVistaPrevia(new Date(formData.fecha_inicio));
+    }
+  }, [formData.fecha_inicio]);
 
   const showNotification = (type, message) => {
     setNotification({ id: Date.now(), type, message });
@@ -226,15 +234,15 @@ export default function AsignarHorarios() {
     });
   };
 
-  // Calcular vista previa del calendario para el mes actual
+  // Calcular vista previa del calendario para cualquier mes
   const calcularVistaPrevia = () => {
     const diasConHorario = [];
     const fechaInicio = new Date(formData.fecha_inicio);
     const fechaFin = formData.fecha_fin ? new Date(formData.fecha_fin) : new Date(fechaInicio.getFullYear(), fechaInicio.getMonth() + 3, fechaInicio.getDate());
 
-    // Obtener todos los días del mes de la fecha de inicio
-    const primerDiaMes = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth(), 1);
-    const ultimoDiaMes = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth() + 1, 0);
+    // Obtener todos los días del mes que se está visualizando (mesVistaPrevia)
+    const primerDiaMes = new Date(mesVistaPrevia.getFullYear(), mesVistaPrevia.getMonth(), 1);
+    const ultimoDiaMes = new Date(mesVistaPrevia.getFullYear(), mesVistaPrevia.getMonth() + 1, 0);
 
     let fechaActual = new Date(primerDiaMes);
 
@@ -257,9 +265,8 @@ export default function AsignarHorarios() {
   };
 
   const obtenerDiasMesVistaPrevia = () => {
-    const fechaRef = new Date(formData.fecha_inicio);
-    const año = fechaRef.getFullYear();
-    const mes = fechaRef.getMonth();
+    const año = mesVistaPrevia.getFullYear();
+    const mes = mesVistaPrevia.getMonth();
 
     const primerDia = new Date(año, mes, 1);
     const ultimoDia = new Date(año, mes + 1, 0);
@@ -290,6 +297,14 @@ export default function AsignarHorarios() {
     }
 
     return dias;
+  };
+
+  const cambiarMesVistaPrevia = (direccion) => {
+    setMesVistaPrevia(prev => {
+      const nuevaFecha = new Date(prev);
+      nuevaFecha.setMonth(nuevaFecha.getMonth() + direccion);
+      return nuevaFecha;
+    });
   };
 
   const confirmarEliminacion = (horarioId) => {
@@ -761,9 +776,31 @@ export default function AsignarHorarios() {
               <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                 {/* Header del calendario */}
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-700 dark:to-indigo-700 px-6 py-5">
-                  <h3 className="text-xl font-bold text-white mb-1">Vista Previa del Mes</h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xl font-bold text-white">Vista Previa del Mes</h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => cambiarMesVistaPrevia(-1)}
+                        className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                        title="Mes anterior"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => cambiarMesVistaPrevia(1)}
+                        className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+                        title="Mes siguiente"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                   <p className="text-blue-100 text-sm">
-                    {new Date(formData.fecha_inicio).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase()}
+                    {mesVistaPrevia.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase()}
                   </p>
                 </div>
 
@@ -804,8 +841,16 @@ export default function AsignarHorarios() {
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-7 gap-2">
-                    {diasMes.map((diaObj, index) => {
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={`${mesVistaPrevia.getFullYear()}-${mesVistaPrevia.getMonth()}`}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.3 }}
+                      className="grid grid-cols-7 gap-2"
+                    >
+                      {diasMes.map((diaObj, index) => {
                       const { fecha, esMesActual } = diaObj;
                       const tieneHorario = diasConHorario.some(
                         d => d.fecha.toDateString() === fecha.toDateString()
@@ -857,7 +902,8 @@ export default function AsignarHorarios() {
                         </motion.div>
                       );
                     })}
-                  </div>
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
 
                 {/* Leyenda */}

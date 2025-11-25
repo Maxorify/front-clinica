@@ -1,0 +1,38 @@
+<!-- Logo temporal SVG - Convertir a PNG si lo necesitas -->
+<svg width="500" height="500" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo circular verde -->
+  <circle cx="250" cy="250" r="240" fill="#22c55e" opacity="0.1"/>
+  <circle cx="250" cy="250" r="200" fill="#22c55e" opacity="0.2"/>
+  
+  <!-- Cruz médica -->
+  <g fill="#22c55e">
+    <!-- Barra vertical -->
+    <rect x="215" y="150" width="70" height="200" rx="10"/>
+    <!-- Barra horizontal -->
+    <rect x="150" y="215" width="200" height="70" rx="10"/>
+  </g>
+  
+  <!-- Corazón en el centro -->
+  <g fill="#ffffff">
+    <path d="M 250 260 
+             C 250 240, 220 220, 200 240
+             C 180 260, 180 280, 200 300
+             L 250 340
+             L 300 300
+             C 320 280, 320 260, 300 240
+             C 280 220, 250 240, 250 260 Z"/>
+  </g>
+  
+  <!-- Texto -->
+  <text x="250" y="430" 
+        font-family="Arial, sans-serif" 
+        font-size="48" 
+        font-weight="bold" 
+        fill="#22c55e" 
+        text-anchor="middle">CLÍNICA</text>
+  <text x="250" y="470" 
+        font-family="Arial, sans-serif" 
+        font-size="32" 
+        fill="#374151" 
+        text-anchor="middle">Médica</text>
+</svg>

@@ -186,14 +186,14 @@ export default function MiPerfil() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-full min-h-[400px]">
         <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="w-full space-y-8">
       {/* Notificación */}
       <AnimatePresence>
         {notificacion.show && (
@@ -282,7 +282,7 @@ export default function MiPerfil() {
         )}
       </motion.div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form id="profile-form" onSubmit={handleSubmit} className="space-y-8">
         {/* Profile Header Card - Hero Section */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -290,8 +290,8 @@ export default function MiPerfil() {
           className="relative overflow-hidden bg-gradient-to-br from-green-500 via-emerald-600 to-teal-600 rounded-3xl shadow-2xl p-10"
         >
           {/* Decorative circles */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32 blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-400/20 rounded-full translate-y-48 -translate-x-48 blur-3xl"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-32 translate-x-32 blur-3xl pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-400/20 rounded-full translate-y-48 -translate-x-48 blur-3xl pointer-events-none"></div>
 
           <div className="relative flex items-center gap-8">
             <motion.div
@@ -362,7 +362,7 @@ export default function MiPerfil() {
             whileHover={{ y: -8, scale: 1.02 }}
             className="group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-8 hover:shadow-2xl transition-all duration-300"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-400/20 to-emerald-500/20 rounded-full -translate-y-16 translate-x-16 blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-400/20 to-emerald-500/20 rounded-full -translate-y-16 translate-x-16 blur-2xl group-hover:scale-150 transition-transform duration-500 pointer-events-none"></div>
             <div className="relative flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -400,7 +400,7 @@ export default function MiPerfil() {
             whileHover={{ y: -8, scale: 1.02 }}
             className="group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-8 hover:shadow-2xl transition-all duration-300"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-violet-500/20 rounded-full -translate-y-16 translate-x-16 blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-400/20 to-violet-500/20 rounded-full -translate-y-16 translate-x-16 blur-2xl group-hover:scale-150 transition-transform duration-500 pointer-events-none"></div>
             <div className="relative flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -438,7 +438,7 @@ export default function MiPerfil() {
             whileHover={{ y: -8, scale: 1.02 }}
             className="group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-8 hover:shadow-2xl transition-all duration-300"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-cyan-500/20 rounded-full -translate-y-16 translate-x-16 blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-cyan-500/20 rounded-full -translate-y-16 translate-x-16 blur-2xl group-hover:scale-150 transition-transform duration-500 pointer-events-none"></div>
             <div className="relative flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -667,7 +667,7 @@ export default function MiPerfil() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="relative overflow-hidden bg-white dark:bg-gray-800 rounded-3xl shadow-xl hover:shadow-2xl transition-shadow duration-300"
+          className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 hover:shadow-2xl transition-shadow duration-300"
         >
           <div className="p-8">
             <div className="flex items-center space-x-3 mb-6">
@@ -787,7 +787,7 @@ export default function MiPerfil() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="relative overflow-hidden bg-white dark:bg-gray-800 rounded-3xl shadow-xl hover:shadow-2xl transition-shadow duration-300"
+          className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 hover:shadow-2xl transition-shadow duration-300"
         >
           <div className="p-8">
             <div className="flex items-center space-x-3 mb-6">
@@ -811,7 +811,7 @@ export default function MiPerfil() {
               </h2>
             </div>
 
-            <div className="relative overflow-hidden bg-gradient-to-br from-red-50/50 to-rose-50/50 dark:from-red-900/20 dark:to-rose-900/20 border-2 border-red-200 dark:border-red-700 rounded-xl p-6">
+            <div className="relative bg-gradient-to-br from-red-50/50 to-rose-50/50 dark:from-red-900/20 dark:to-rose-900/20 border-2 border-red-200 dark:border-red-700 rounded-xl p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/30">
@@ -853,20 +853,21 @@ export default function MiPerfil() {
           </div>
         </motion.div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Al final del formulario */}
         {isEditing && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="flex gap-4 justify-end"
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.3 }}
+            className="flex gap-4 justify-end sticky bottom-6 z-30"
           >
             <motion.button
               type="button"
               onClick={handleCancel}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 font-bold text-base"
+              className="px-8 py-4 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-200 font-bold text-base"
             >
               Cancelar
             </motion.button>
@@ -874,7 +875,7 @@ export default function MiPerfil() {
               type="submit"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all duration-200 font-bold text-base flex items-center gap-2"
+              className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl shadow-xl shadow-green-500/50 hover:shadow-2xl hover:shadow-green-500/60 transition-all duration-200 font-bold text-base flex items-center gap-2"
             >
               <svg
                 className="w-5 h-5"
