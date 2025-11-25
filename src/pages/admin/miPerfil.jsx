@@ -1,19 +1,19 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios";
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 
-const API_URL = "http://localhost:5000";
+const API_URL = 'http://localhost:5000';
 
 export default function AjustesSistema() {
   const [perfil, setPerfil] = useState({
-    nombre: "",
-    apellido_paterno: "",
-    apellido_materno: "",
-    rut: "",
-    email: "",
-    celular: "",
-    cel_secundario: "",
-    direccion: "",
+    nombre: '',
+    apellido_paterno: '',
+    apellido_materno: '',
+    rut: '',
+    email: '',
+    celular: '',
+    cel_secundario: '',
+    direccion: ''
   });
   const [perfilOriginal, setPerfilOriginal] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -34,9 +34,7 @@ export default function AjustesSistema() {
 
   useEffect(() => {
     if (perfilOriginal) {
-      const changed = Object.keys(perfil).some(
-        (key) => perfil[key] !== perfilOriginal[key]
-      );
+      const changed = Object.keys(perfil).some(key => perfil[key] !== perfilOriginal[key]);
       setHasChanges(changed);
     }
   }, [perfil, perfilOriginal]);
@@ -49,12 +47,9 @@ export default function AjustesSistema() {
     setLoading(true);
     try {
       // Obtener el ID del usuario desde localStorage (guardado en el login)
-      const userStr = localStorage.getItem("user");
+      const userStr = localStorage.getItem('user');
       if (!userStr) {
-        showNotification(
-          "error",
-          "No se encontró información del usuario. Por favor, inicie sesión nuevamente."
-        );
+        showNotification('error', 'No se encontró información del usuario. Por favor, inicie sesión nuevamente.');
         return;
       }
 
@@ -62,57 +57,55 @@ export default function AjustesSistema() {
       const usuarioId = userData?.id;
 
       if (!usuarioId) {
-        showNotification("error", "No se encontró el ID del usuario.");
+        showNotification('error', 'No se encontró el ID del usuario.');
         return;
       }
 
-      const response = await axios.get(
-        `${API_URL}/Perfil/obtener/${usuarioId}`
-      );
+      const response = await axios.get(`${API_URL}/Perfil/obtener/${usuarioId}`);
       const perfilData = response.data?.perfil || {};
 
       setPerfil({
-        nombre: perfilData.nombre || "",
-        apellido_paterno: perfilData.apellido_paterno || "",
-        apellido_materno: perfilData.apellido_materno || "",
-        rut: perfilData.rut || "",
-        email: perfilData.email || "",
-        celular: perfilData.celular || "",
-        cel_secundario: perfilData.cel_secundario || "",
-        direccion: perfilData.direccion || "",
+        nombre: perfilData.nombre || '',
+        apellido_paterno: perfilData.apellido_paterno || '',
+        apellido_materno: perfilData.apellido_materno || '',
+        rut: perfilData.rut || '',
+        email: perfilData.email || '',
+        celular: perfilData.celular || '',
+        cel_secundario: perfilData.cel_secundario || '',
+        direccion: perfilData.direccion || ''
       });
 
       setPerfilOriginal({
-        nombre: perfilData.nombre || "",
-        apellido_paterno: perfilData.apellido_paterno || "",
-        apellido_materno: perfilData.apellido_materno || "",
-        rut: perfilData.rut || "",
-        email: perfilData.email || "",
-        celular: perfilData.celular || "",
-        cel_secundario: perfilData.cel_secundario || "",
-        direccion: perfilData.direccion || "",
+        nombre: perfilData.nombre || '',
+        apellido_paterno: perfilData.apellido_paterno || '',
+        apellido_materno: perfilData.apellido_materno || '',
+        rut: perfilData.rut || '',
+        email: perfilData.email || '',
+        celular: perfilData.celular || '',
+        cel_secundario: perfilData.cel_secundario || '',
+        direccion: perfilData.direccion || ''
       });
 
       setHasChanges(false);
     } catch (error) {
-      console.error("Error al cargar perfil:", error);
-      showNotification("error", "Error al cargar el perfil del usuario.");
+      console.error('Error al cargar perfil:', error);
+      showNotification('error', 'Error al cargar el perfil del usuario.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleInputChange = (field, value) => {
-    setPerfil((prev) => ({
+    setPerfil(prev => ({
       ...prev,
-      [field]: value,
+      [field]: value
     }));
 
     // Limpiar error del campo cuando el usuario empieza a escribir
     if (errors[field]) {
-      setErrors((prev) => ({
+      setErrors(prev => ({
         ...prev,
-        [field]: null,
+        [field]: null
       }));
     }
   };
@@ -121,27 +114,27 @@ export default function AjustesSistema() {
     const nuevosErrores = {};
 
     if (!perfil.nombre.trim()) {
-      nuevosErrores.nombre = "El nombre es requerido";
+      nuevosErrores.nombre = 'El nombre es requerido';
     }
     if (!perfil.apellido_paterno.trim()) {
-      nuevosErrores.apellido_paterno = "El apellido paterno es requerido";
+      nuevosErrores.apellido_paterno = 'El apellido paterno es requerido';
     }
     if (!perfil.apellido_materno.trim()) {
-      nuevosErrores.apellido_materno = "El apellido materno es requerido";
+      nuevosErrores.apellido_materno = 'El apellido materno es requerido';
     }
     if (!perfil.rut.trim()) {
-      nuevosErrores.rut = "El RUT es requerido";
+      nuevosErrores.rut = 'El RUT es requerido';
     }
     if (!perfil.email.trim()) {
-      nuevosErrores.email = "El email es requerido";
+      nuevosErrores.email = 'El email es requerido';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(perfil.email)) {
-      nuevosErrores.email = "El email no es válido";
+      nuevosErrores.email = 'El email no es válido';
     }
     if (!perfil.celular.trim()) {
-      nuevosErrores.celular = "El celular es requerido";
+      nuevosErrores.celular = 'El celular es requerido';
     }
     if (!perfil.direccion.trim()) {
-      nuevosErrores.direccion = "La dirección es requerida";
+      nuevosErrores.direccion = 'La dirección es requerida';
     }
 
     setErrors(nuevosErrores);
@@ -150,22 +143,19 @@ export default function AjustesSistema() {
 
   const guardarCambios = async () => {
     if (!validarFormulario()) {
-      showNotification(
-        "error",
-        "Por favor, complete todos los campos requeridos."
-      );
+      showNotification('error', 'Por favor, complete todos los campos requeridos.');
       return;
     }
 
     setSaving(true);
     try {
-      const userStr = localStorage.getItem("user");
+      const userStr = localStorage.getItem('user');
       const userData = JSON.parse(userStr);
       const usuarioId = userData?.id;
 
       await axios.put(`${API_URL}/Perfil/actualizar/${usuarioId}`, perfil);
 
-      showNotification("success", "Perfil actualizado correctamente.");
+      showNotification('success', 'Perfil actualizado correctamente.');
       setPerfilOriginal({ ...perfil });
       setHasChanges(false);
 
@@ -175,14 +165,14 @@ export default function AjustesSistema() {
         nombre: perfil.nombre,
         apellido_paterno: perfil.apellido_paterno,
         apellido_materno: perfil.apellido_materno,
-        email: perfil.email,
+        email: perfil.email
       };
-      localStorage.setItem("user", JSON.stringify(updatedUserData));
+      localStorage.setItem('user', JSON.stringify(updatedUserData));
+
     } catch (error) {
-      console.error("Error al guardar perfil:", error);
-      const mensajeError =
-        error.response?.data?.detail || "Error al guardar los cambios.";
-      showNotification("error", mensajeError);
+      console.error('Error al guardar perfil:', error);
+      const mensajeError = error.response?.data?.detail || 'Error al guardar los cambios.';
+      showNotification('error', mensajeError);
     } finally {
       setSaving(false);
     }
@@ -217,76 +207,40 @@ export default function AjustesSistema() {
           >
             <div
               className={`max-w-sm rounded-xl border shadow-2xl px-4 py-3 backdrop-blur bg-white/90 dark:bg-gray-900/90 ${
-                notification.type === "success"
-                  ? "border-emerald-500"
-                  : "border-red-500"
+                notification.type === 'success' ? 'border-emerald-500' : 'border-red-500'
               }`}
             >
               <div className="flex items-start gap-3">
                 <span
                   className={`mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full ${
-                    notification.type === "success"
-                      ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-100"
-                      : "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-100"
+                    notification.type === 'success'
+                      ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-100'
+                      : 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-100'
                   }`}
                 >
-                  {notification.type === "success" ? (
-                    <svg
-                      className="h-4 w-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
+                  {notification.type === 'success' ? (
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   ) : (
-                    <svg
-                      className="h-4 w-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 9v4m0 4h.01M12 5a7 7 0 100 14 7 7 0 000-14z"
-                      />
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v4m0 4h.01M12 5a7 7 0 100 14 7 7 0 000-14z" />
                     </svg>
                   )}
                 </span>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {notification.type === "success"
-                      ? "Acción completada"
-                      : "Ocurrió un problema"}
+                    {notification.type === 'success' ? 'Acción completada' : 'Ocurrió un problema'}
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    {notification.message}
-                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{notification.message}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setNotification(null)}
                   className="ml-3 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
                 >
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
@@ -319,9 +273,7 @@ export default function AjustesSistema() {
               transition={{ delay: 0.1 }}
               className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 lg:p-8"
             >
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
-                Información Personal
-              </h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Información Personal</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Nombre */}
@@ -332,13 +284,9 @@ export default function AjustesSistema() {
                   <input
                     type="text"
                     value={perfil.nombre}
-                    onChange={(e) =>
-                      handleInputChange("nombre", e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('nombre', e.target.value)}
                     className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border ${
-                      errors.nombre
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                      errors.nombre ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     } rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white transition-all`}
                     placeholder="Ingrese su nombre"
                   />
@@ -355,20 +303,14 @@ export default function AjustesSistema() {
                   <input
                     type="text"
                     value={perfil.apellido_paterno}
-                    onChange={(e) =>
-                      handleInputChange("apellido_paterno", e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('apellido_paterno', e.target.value)}
                     className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border ${
-                      errors.apellido_paterno
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                      errors.apellido_paterno ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     } rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white transition-all`}
                     placeholder="Ingrese su apellido paterno"
                   />
                   {errors.apellido_paterno && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.apellido_paterno}
-                    </p>
+                    <p className="mt-1 text-sm text-red-500">{errors.apellido_paterno}</p>
                   )}
                 </div>
 
@@ -380,20 +322,14 @@ export default function AjustesSistema() {
                   <input
                     type="text"
                     value={perfil.apellido_materno}
-                    onChange={(e) =>
-                      handleInputChange("apellido_materno", e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('apellido_materno', e.target.value)}
                     className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border ${
-                      errors.apellido_materno
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                      errors.apellido_materno ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     } rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white transition-all`}
                     placeholder="Ingrese su apellido materno"
                   />
                   {errors.apellido_materno && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.apellido_materno}
-                    </p>
+                    <p className="mt-1 text-sm text-red-500">{errors.apellido_materno}</p>
                   )}
                 </div>
 
@@ -405,11 +341,9 @@ export default function AjustesSistema() {
                   <input
                     type="text"
                     value={perfil.rut}
-                    onChange={(e) => handleInputChange("rut", e.target.value)}
+                    onChange={(e) => handleInputChange('rut', e.target.value)}
                     className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border ${
-                      errors.rut
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                      errors.rut ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     } rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white transition-all`}
                     placeholder="Ej: 12345678-9"
                   />
@@ -426,11 +360,9 @@ export default function AjustesSistema() {
                   <input
                     type="email"
                     value={perfil.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
                     className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border ${
-                      errors.email
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                      errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     } rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white transition-all`}
                     placeholder="correo@ejemplo.com"
                   />
@@ -447,20 +379,14 @@ export default function AjustesSistema() {
                   <input
                     type="tel"
                     value={perfil.celular}
-                    onChange={(e) =>
-                      handleInputChange("celular", e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('celular', e.target.value)}
                     className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border ${
-                      errors.celular
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                      errors.celular ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     } rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white transition-all`}
                     placeholder="+56 9 1234 5678"
                   />
                   {errors.celular && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.celular}
-                    </p>
+                    <p className="mt-1 text-sm text-red-500">{errors.celular}</p>
                   )}
                 </div>
 
@@ -472,9 +398,7 @@ export default function AjustesSistema() {
                   <input
                     type="tel"
                     value={perfil.cel_secundario}
-                    onChange={(e) =>
-                      handleInputChange("cel_secundario", e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('cel_secundario', e.target.value)}
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white transition-all"
                     placeholder="+56 9 1234 5678"
                   />
@@ -487,21 +411,15 @@ export default function AjustesSistema() {
                   </label>
                   <textarea
                     value={perfil.direccion}
-                    onChange={(e) =>
-                      handleInputChange("direccion", e.target.value)
-                    }
+                    onChange={(e) => handleInputChange('direccion', e.target.value)}
                     rows={3}
                     className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border ${
-                      errors.direccion
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-600"
+                      errors.direccion ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     } rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white transition-all resize-none`}
                     placeholder="Ingrese su dirección completa"
                   />
                   {errors.direccion && (
-                    <p className="mt-1 text-sm text-red-500">
-                      {errors.direccion}
-                    </p>
+                    <p className="mt-1 text-sm text-red-500">{errors.direccion}</p>
                   )}
                 </div>
               </div>
@@ -532,27 +450,12 @@ export default function AjustesSistema() {
                   className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all shadow-lg hover:shadow-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {saving && (
-                    <svg
-                      className="animate-spin h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
                   )}
-                  {saving ? "Guardando..." : "Guardar Cambios"}
+                  {saving ? 'Guardando...' : 'Guardar Cambios'}
                 </motion.button>
               </motion.div>
             )}

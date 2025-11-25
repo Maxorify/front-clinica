@@ -17,8 +17,7 @@ import Pacientes from "./pages/admin/pacientes";
 import UsuariosSistema from "./pages/admin/usuariosSistema";
 import Especialidades from "./pages/admin/especialidades";
 import AsignarHorarios from "./pages/admin/asignarHorarios";
-import RegistroAsistencia from "./pages/admin/registroAsistencia";
-import AjustesSistema from "./pages/admin/ajustesSistema";
+import AjustesSistema from "./pages/admin/miPerfil";
 import Asistencia from "./pages/admin/asistencia";
 import BoletasGeneradas from "./pages/admin/boletasGeneradas";
 
@@ -30,12 +29,12 @@ import MiPerfil from "./pages/doctor/miPerfil";
 
 // Secretaria Pages
 import DashboardSecretaria from "./pages/secretaria/dashboardSecretaria";
-import AgendarCita from "./pages/secretaria/agendarCita";
 import CajaPagos from "./pages/secretaria/cajaPagos";
 import EditarPerfil from "./pages/secretaria/editarPerfil";
 import CheckingPacientes from "./pages/secretaria/checkingPacientes";
 import Recepcion from "./pages/secretaria/recepcion";
 import PacientesSecretaria from "./pages/secretaria/pacientes";
+// AgendarCita removido - ahora usa AgendamientoConsultas optimizado
 // AsistenciaSecretaria removido - ahora usa el mismo componente de admin
 
 import "./App.css";
@@ -68,10 +67,6 @@ function App() {
           <Route path="/admin/usuarios-sistema" element={<UsuariosSistema />} />
           <Route path="/admin/especialidades" element={<Especialidades />} />
           <Route path="/admin/asignar-horarios" element={<AsignarHorarios />} />
-          <Route
-            path="/admin/registro-asistencia"
-            element={<RegistroAsistencia />}
-          />
           <Route path="/admin/asistencia" element={<Asistencia />} />
           <Route path="/admin/ajustes-sistema" element={<AjustesSistema />} />
           <Route
@@ -111,7 +106,6 @@ function App() {
             path="/secretaria/agendamiento"
             element={<AgendamientoConsultas />}
           />
-          <Route path="/secretaria/agendar-cita" element={<AgendarCita />} />
           <Route
             path="/secretaria/pacientes"
             element={<PacientesSecretaria />}

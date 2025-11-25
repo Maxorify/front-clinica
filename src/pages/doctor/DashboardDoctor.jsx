@@ -5,6 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const API_URL = "http://localhost:5000";
 
+// Helper para parsear fechas UTC del backend correctamente
+const parseUTCDate = (dateString) => {
+  if (!dateString) return null;
+  // Si ya termina en Z, usar directamente. Si no, agregarlo
+  const dateStr = dateString.endsWith("Z") ? dateString : dateString + "Z";
+  return new Date(dateStr);
+};
+
 export default function DashboardDoctor() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
@@ -66,7 +74,21 @@ export default function DashboardDoctor() {
       const response = await axios.get(
         `${API_URL}/asistencia/doctor/mi-turno-hoy?usuario_id=${doctorId}`
       );
-      setTurnoHoy(response.data);
+
+      // Calcular si está fuera de horario
+      const data = response.data;
+      if (data.tiene_turno) {
+        const ahora = new Date();
+        // Convertir fechas UTC del backend a hora local
+        const finTurno = parseUTCDate(data.turno_programado.fin);
+        const inicioTurno = parseUTCDate(data.turno_programado.inicio);
+
+        data.fuera_de_horario = ahora > finTurno;
+        data.esta_atrasado =
+          ahora > inicioTurno && !data.asistencia.tiene_entrada;
+      }
+
+      setTurnoHoy(data);
     } catch (error) {
       console.error("Error al cargar turno:", error);
       setTurnoHoy({ tiene_turno: false });
@@ -74,13 +96,28 @@ export default function DashboardDoctor() {
   };
 
   const marcarEntrada = async () => {
+    // Validar si está fuera de horario
+    if (turnoHoy?.fuera_de_horario) {
+      showNotification(
+        "error",
+        "⏰ Turno finalizado. No puedes marcar entrada después de la hora límite."
+      );
+      return;
+    }
+
     setLoadingAsistencia(true);
     try {
       const doctorId = localStorage.getItem("user_id");
       await axios.post(
         `${API_URL}/asistencia/doctor/marcar-entrada?usuario_id=${doctorId}`
       );
-      showNotification("success", "✓ Entrada registrada exitosamente");
+
+      if (turnoHoy?.esta_atrasado) {
+        showNotification("warning", "⚠️ Entrada registrada con atraso");
+      } else {
+        showNotification("success", "✓ Entrada registrada exitosamente");
+      }
+
       await cargarTurnoHoy();
     } catch (error) {
       showNotification(
@@ -122,9 +159,10 @@ export default function DashboardDoctor() {
 
   const calcularHorasTrabajadas = () => {
     if (!turnoHoy?.asistencia?.hora_entrada) return "0.0";
-    const entrada = new Date(turnoHoy.asistencia.hora_entrada);
-    const ahora = new Date();
-    const diff = (ahora - entrada) / (1000 * 60 * 60);
+    // El backend guarda en UTC, convertir a hora local
+    const entrada = parseUTCDate(turnoHoy.asistencia.hora_entrada);
+    if (!entrada) return "0.0";
+    const diff = (currentTime - entrada) / (1000 * 60 * 60);
     return diff.toFixed(1);
   };
 
@@ -271,21 +309,21 @@ export default function DashboardDoctor() {
                           HORARIO
                         </div>
                         <div className="text-white font-bold text-lg">
-                          {new Date(
+                          {parseUTCDate(
                             turnoHoy.turno_programado.inicio
-                          ).toLocaleTimeString("es-CL", {
+                          )?.toLocaleTimeString("es-CL", {
                             hour: "2-digit",
                             minute: "2-digit",
-                          })}
+                          }) || "---"}
                         </div>
                         <div className="text-blue-100 text-sm">
                           -{" "}
-                          {new Date(
+                          {parseUTCDate(
                             turnoHoy.turno_programado.fin
-                          ).toLocaleTimeString("es-CL", {
+                          )?.toLocaleTimeString("es-CL", {
                             hour: "2-digit",
                             minute: "2-digit",
-                          })}
+                          }) || "---"}
                         </div>
                       </div>
 
@@ -296,12 +334,12 @@ export default function DashboardDoctor() {
                         </div>
                         <div className="text-white font-bold text-lg">
                           {turnoHoy.asistencia.hora_entrada
-                            ? new Date(
+                            ? parseUTCDate(
                                 turnoHoy.asistencia.hora_entrada
-                              ).toLocaleTimeString("es-CL", {
+                              )?.toLocaleTimeString("es-CL", {
                                 hour: "2-digit",
                                 minute: "2-digit",
-                              })
+                              }) || "---"
                             : "---"}
                         </div>
                         {turnoHoy.asistencia.minutos_atraso > 0 && (
@@ -332,20 +370,30 @@ export default function DashboardDoctor() {
                         <div className="flex items-center gap-2">
                           <div
                             className={`w-2 h-2 rounded-full ${
-                              turnoHoy.asistencia.tiene_salida
+                              turnoHoy.fuera_de_horario &&
+                              !turnoHoy.asistencia.tiene_entrada
+                                ? "bg-red-500"
+                                : turnoHoy.asistencia.tiene_salida
                                 ? "bg-emerald-400"
                                 : turnoHoy.asistencia.tiene_entrada
-                                ? "bg-green-400 animate-pulse"
-                                : "bg-amber-400"
+                                ? "bg-blue-400 animate-pulse"
+                                : turnoHoy.esta_atrasado
+                                ? "bg-amber-400 animate-pulse"
+                                : "bg-blue-300"
                             }`}
                           />
-                          <div className="text-white font-bold text-sm">
-                            {turnoHoy.asistencia.tiene_salida
+                          <span className="text-white text-sm font-medium">
+                            {turnoHoy.fuera_de_horario &&
+                            !turnoHoy.asistencia.tiene_entrada
+                              ? "Ausente"
+                              : turnoHoy.asistencia.tiene_salida
                               ? "Finalizado"
                               : turnoHoy.asistencia.tiene_entrada
                               ? "En Turno"
-                              : "Programado"}
-                          </div>
+                              : turnoHoy.esta_atrasado
+                              ? "Atrasado"
+                              : "A Tiempo"}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -355,11 +403,23 @@ export default function DashboardDoctor() {
                   <div className="lg:w-64 flex flex-col justify-center gap-3">
                     {turnoHoy.puede_marcar_entrada && (
                       <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        whileHover={{
+                          scale: turnoHoy.fuera_de_horario ? 1 : 1.02,
+                        }}
+                        whileTap={{
+                          scale: turnoHoy.fuera_de_horario ? 1 : 0.98,
+                        }}
                         onClick={marcarEntrada}
-                        disabled={loadingAsistencia}
-                        className="w-full bg-white text-blue-600 hover:bg-blue-50 px-6 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                        disabled={
+                          loadingAsistencia || turnoHoy.fuera_de_horario
+                        }
+                        className={`w-full px-6 py-4 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 ${
+                          turnoHoy.fuera_de_horario
+                            ? "bg-red-100 text-red-700 cursor-not-allowed"
+                            : turnoHoy.esta_atrasado
+                            ? "bg-amber-100 hover:bg-amber-200 text-amber-700"
+                            : "bg-white text-blue-600 hover:bg-blue-50"
+                        }`}
                       >
                         <svg
                           className="w-6 h-6"
@@ -371,10 +431,20 @@ export default function DashboardDoctor() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            d={
+                              turnoHoy.fuera_de_horario
+                                ? "M6 18L18 6M6 6l12 12"
+                                : "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            }
                           />
                         </svg>
-                        {loadingAsistencia ? "Procesando..." : "Marcar Entrada"}
+                        {loadingAsistencia
+                          ? "Procesando..."
+                          : turnoHoy.fuera_de_horario
+                          ? "⛔ Turno Finalizado"
+                          : turnoHoy.esta_atrasado
+                          ? "⚠️ Marcar Entrada (Atrasado)"
+                          : "Marcar Entrada"}
                       </motion.button>
                     )}
 

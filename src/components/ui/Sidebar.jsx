@@ -200,7 +200,7 @@ export default function Sidebar({ isOpen, setIsOpen, darkMode, setDarkMode }) {
           ),
         },
         {
-          title: "Ajustes del Sistema",
+          title: "Mi Perfil",
           path: "/admin/ajustes-sistema",
           icon: (
             <svg

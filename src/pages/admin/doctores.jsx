@@ -461,428 +461,549 @@ export default function Doctores() {
         )}
       </AnimatePresence>
 
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Doctores
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Gestión de médicos de la clínica
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setShowModal(true);
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors duration-200 shadow-lg"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 dark:from-gray-900 dark:via-blue-950/20 dark:to-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="space-y-8">
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            Nuevo Doctor
-          </button>
-        </div>
+              <div>
+                <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                  Doctores
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">
+                  Gestión de médicos de la clínica
+                </p>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setEditingId(null);
+                  setShowModal(true);
+                }}
+                className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl font-bold"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+                Nuevo Doctor
+              </motion.button>
+            </motion.div>
 
-        {/* Search Bar */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar por nombre, RUT o email..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="w-full px-4 py-3 pl-12 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
-            />
-            <svg
-              className="absolute left-4 top-3.5 w-5 h-5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+            {/* Search Bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </div>
-        </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, RUT o email..."
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  className="w-full px-4 py-3 pl-12 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white transition-all"
+                />
+                <svg
+                  className="absolute left-4 top-3.5 w-5 h-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+            </motion.div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
-            <h3 className="text-lg font-semibold opacity-90">Total Doctores</h3>
-            <p className="text-4xl font-bold mt-2">{totalDoctores}</p>
-          </div>
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
-            <h3 className="text-lg font-semibold opacity-90">Página Actual</h3>
-            <p className="text-4xl font-bold mt-2">
-              {currentPage} / {totalPages || 1}
-            </p>
-          </div>
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
-            <h3 className="text-lg font-semibold opacity-90">Especialidades</h3>
-            <p className="text-4xl font-bold mt-2">{especialidades.length}</p>
-          </div>
-        </div>
-
-        {/* Doctors Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {doctores.map((doctor) => (
-            <div
-              key={doctor.id}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
-                    {doctor.nombre?.charAt(0)}
-                    {doctor.apellido_paterno?.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                      {doctor.nombre || ""} {doctor.apellido_paterno || ""}{" "}
-                      {doctor.apellido_materno || ""}
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="group relative bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 lg:p-7 text-white overflow-hidden hover:shadow-2xl transition-shadow"
+              >
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-bold opacity-90">
+                      Total Doctores
                     </h3>
-                    {/* Mostrar especialidades como tags */}
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {doctor.especialidades_ids &&
-                      doctor.especialidades_ids.length > 0 ? (
-                        doctor.especialidades_ids.map((espId) => {
-                          const esp = especialidades.find(
-                            (e) => e.id === espId
-                          );
-                          return esp ? (
-                            <span
-                              key={espId}
-                              className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded"
-                            >
-                              {esp.nombre}
+                  </div>
+                  <p className="text-4xl lg:text-5xl font-bold tabular-nums">
+                    {totalDoctores}
+                  </p>
+                </div>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="group relative bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl shadow-xl p-6 lg:p-7 text-white overflow-hidden hover:shadow-2xl transition-shadow"
+              >
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-bold opacity-90">
+                      Página Actual
+                    </h3>
+                  </div>
+                  <p className="text-4xl lg:text-5xl font-bold tabular-nums">
+                    {currentPage} / {totalPages || 1}
+                  </p>
+                </div>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="group relative bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-xl p-6 lg:p-7 text-white overflow-hidden hover:shadow-2xl transition-shadow"
+              >
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-bold opacity-90">
+                      Especialidades
+                    </h3>
+                  </div>
+                  <p className="text-4xl lg:text-5xl font-bold tabular-nums">
+                    {especialidades.length}
+                  </p>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Doctors Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {doctores.map((doctor, index) => (
+                <motion.div
+                  key={doctor.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35 + index * 0.05 }}
+                  className="group bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-lg p-6 lg:p-7 border border-gray-200 dark:border-gray-700 hover:shadow-2xl hover:border-blue-300 dark:hover:border-blue-500 transition-all duration-300"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold">
+                        {doctor.nombre?.charAt(0)}
+                        {doctor.apellido_paterno?.charAt(0)}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                          {doctor.nombre || ""} {doctor.apellido_paterno || ""}{" "}
+                          {doctor.apellido_materno || ""}
+                        </h3>
+                        {/* Mostrar especialidades como tags */}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {doctor.especialidades_ids &&
+                          doctor.especialidades_ids.length > 0 ? (
+                            doctor.especialidades_ids.map((espId) => {
+                              const esp = especialidades.find(
+                                (e) => e.id === espId
+                              );
+                              return esp ? (
+                                <span
+                                  key={espId}
+                                  className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded"
+                                >
+                                  {esp.nombre}
+                                </span>
+                              ) : null;
+                            })
+                          ) : (
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              Sin especialidades
                             </span>
-                          ) : null;
-                        })
-                      ) : (
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          Sin especialidades
-                        </span>
-                      )}
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                    />
-                  </svg>
-                  <span>{String(doctor.celular || "Sin teléfono")}</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <span>{String(doctor.email || "Sin email")}</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"
-                    />
-                  </svg>
-                  <span>
-                    {doctor.rut ? formatearRut(String(doctor.rut)) : "Sin RUT"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => handleEdit(doctor)}
-                  className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-medium"
-                >
-                  Editar
-                </button>
-                <div className="relative flex-1">
-                  <button
-                    onClick={() => togglePopover(doctor.id)}
-                    className="w-full px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium"
-                  >
-                    Clave Temporal
-                  </button>
-
-                  {/* Popover de Clave Temporal */}
-                  <AnimatePresence>
-                    {popoverDoctorId === doctor.id && doctor.contraseña_temporal && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        transition={{ duration: 0.15, ease: "easeOut" }}
-                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50"
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 min-w-[200px]">
-                          {/* Flecha del popover */}
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
-                            <div className="border-8 border-transparent border-t-white dark:border-t-gray-800"></div>
-                          </div>
-                          <div className="absolute top-full left-1/2 -translate-x-1/2">
-                            <div className="border-8 border-transparent border-t-gray-200 dark:border-t-gray-700 -mt-px"></div>
-                          </div>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                        />
+                      </svg>
+                      <span>{String(doctor.celular || "Sin teléfono")}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <span>{String(doctor.email || "Sin email")}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"
+                        />
+                      </svg>
+                      <span>
+                        {doctor.rut
+                          ? formatearRut(String(doctor.rut))
+                          : "Sin RUT"}
+                      </span>
+                    </div>
+                  </div>
 
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                            Clave Temporal
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <code className="flex-1 text-sm font-mono font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded break-all">
-                              {doctor.contraseña_temporal}
-                            </code>
-                            <button
-                              onClick={() => copiarClavePopover(doctor.contraseña_temporal)}
-                              className="p-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors flex-shrink-0"
-                              title="Copiar clave"
+                  <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                      onClick={() => handleEdit(doctor)}
+                      className="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors text-sm font-medium"
+                    >
+                      Editar
+                    </button>
+                    <div className="relative flex-1">
+                      <button
+                        onClick={() => togglePopover(doctor.id)}
+                        className="w-full px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors text-sm font-medium"
+                      >
+                        Clave Temporal
+                      </button>
+
+                      {/* Popover de Clave Temporal */}
+                      <AnimatePresence>
+                        {popoverDoctorId === doctor.id &&
+                          doctor.contraseña_temporal && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                              transition={{ duration: 0.15, ease: "easeOut" }}
+                              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                              </svg>
+                              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 min-w-[200px]">
+                                {/* Flecha del popover */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                                  <div className="border-8 border-transparent border-t-white dark:border-t-gray-800"></div>
+                                </div>
+                                <div className="absolute top-full left-1/2 -translate-x-1/2">
+                                  <div className="border-8 border-transparent border-t-gray-200 dark:border-t-gray-700 -mt-px"></div>
+                                </div>
+
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                                  Clave Temporal
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <code className="flex-1 text-sm font-mono font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded break-all">
+                                    {doctor.contraseña_temporal}
+                                  </code>
+                                  <button
+                                    onClick={() =>
+                                      copiarClavePopover(
+                                        doctor.contraseña_temporal
+                                      )
+                                    }
+                                    className="p-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors flex-shrink-0"
+                                    title="Copiar clave"
+                                  >
+                                    <svg
+                                      className="w-4 h-4"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                                      />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                      </AnimatePresence>
+
+                      {/* Mensaje si no tiene clave temporal */}
+                      <AnimatePresence>
+                        {popoverDoctorId === doctor.id &&
+                          !doctor.contraseña_temporal && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                              transition={{ duration: 0.15, ease: "easeOut" }}
+                              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50"
+                            >
+                              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 min-w-[200px]">
+                                {/* Flecha del popover */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                                  <div className="border-8 border-transparent border-t-white dark:border-t-gray-800"></div>
+                                </div>
+                                <div className="absolute top-full left-1/2 -translate-x-1/2">
+                                  <div className="border-8 border-transparent border-t-gray-200 dark:border-t-gray-700 -mt-px"></div>
+                                </div>
+
+                                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                                  Sin clave temporal
+                                </p>
+                              </div>
+                            </motion.div>
+                          )}
+                      </AnimatePresence>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleDelete(
+                          doctor.id,
+                          `${doctor.nombre} ${doctor.apellido_paterno}`
+                        )
+                      }
+                      className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-medium"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {doctores.length === 0 && !loading && (
+              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                <svg
+                  className="mx-auto h-12 w-12 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                <p className="mt-4 text-gray-500 dark:text-gray-400">
+                  No se encontraron doctores
+                </p>
+              </div>
+            )}
+
+            {/* Loading State */}
+            {loading && (
+              <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                <div className="flex justify-center items-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+                <p className="mt-4 text-gray-500 dark:text-gray-400">
+                  Cargando doctores...
+                </p>
+              </div>
+            )}
+
+            {/* Paginación */}
+            {totalPages > 1 && !loading && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  {/* Información de página */}
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    Mostrando{" "}
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                      {doctores.length}
+                    </span>{" "}
+                    de{" "}
+                    <span className="font-semibold text-gray-900 dark:text-white">
+                      {totalDoctores}
+                    </span>{" "}
+                    doctores
+                  </div>
+
+                  {/* Controles de paginación */}
+                  <div className="flex items-center gap-2">
+                    {/* Botón Primera Página */}
+                    <button
+                      onClick={() => goToPage(1)}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Primera página"
+                    >
+                      <svg
+                        className="w-5 h-5 text-gray-600 dark:text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                        />
+                      </svg>
+                    </button>
+
+                    {/* Botón Anterior */}
+                    <button
+                      onClick={goToPrevPage}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700 dark:text-gray-300 font-medium"
+                    >
+                      Anterior
+                    </button>
+
+                    {/* Números de página */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((page) => {
+                          // Mostrar siempre primera y última página
+                          if (page === 1 || page === totalPages) return true;
+                          // Mostrar páginas cercanas a la actual
+                          return Math.abs(page - currentPage) <= 1;
+                        })
+                        .map((page, index, array) => (
+                          <div key={page} className="flex items-center">
+                            {/* Mostrar "..." si hay gap */}
+                            {index > 0 && page - array[index - 1] > 1 && (
+                              <span className="px-2 text-gray-500">...</span>
+                            )}
+                            <button
+                              onClick={() => goToPage(page)}
+                              className={`min-w-[40px] h-10 rounded-lg font-medium transition-colors ${
+                                currentPage === page
+                                  ? "bg-blue-500 text-white shadow-lg"
+                                  : "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              }`}
+                            >
+                              {page}
                             </button>
                           </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        ))}
+                    </div>
 
-                  {/* Mensaje si no tiene clave temporal */}
-                  <AnimatePresence>
-                    {popoverDoctorId === doctor.id && !doctor.contraseña_temporal && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        transition={{ duration: 0.15, ease: "easeOut" }}
-                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50"
+                    {/* Botón Siguiente */}
+                    <button
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700 dark:text-gray-300 font-medium"
+                    >
+                      Siguiente
+                    </button>
+
+                    {/* Botón Última Página */}
+                    <button
+                      onClick={() => goToPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Última página"
+                    >
+                      <svg
+                        className="w-5 h-5 text-gray-600 dark:text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 min-w-[200px]">
-                          {/* Flecha del popover */}
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
-                            <div className="border-8 border-transparent border-t-white dark:border-t-gray-800"></div>
-                          </div>
-                          <div className="absolute top-full left-1/2 -translate-x-1/2">
-                            <div className="border-8 border-transparent border-t-gray-200 dark:border-t-gray-700 -mt-px"></div>
-                          </div>
-
-                          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                            Sin clave temporal
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() =>
-                    handleDelete(
-                      doctor.id,
-                      `${doctor.nombre} ${doctor.apellido_paterno}`
-                    )
-                  }
-                  className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-sm font-medium"
-                >
-                  Eliminar
-                </button>
               </div>
-            </div>
-          ))}
+            )}
+          </div>
         </div>
-
-        {doctores.length === 0 && !loading && (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <p className="mt-4 text-gray-500 dark:text-gray-400">
-              No se encontraron doctores
-            </p>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-            <div className="flex justify-center items-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            </div>
-            <p className="mt-4 text-gray-500 dark:text-gray-400">
-              Cargando doctores...
-            </p>
-          </div>
-        )}
-
-        {/* Paginación */}
-        {totalPages > 1 && !loading && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              {/* Información de página */}
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Mostrando{" "}
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  {doctores.length}
-                </span>{" "}
-                de{" "}
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  {totalDoctores}
-                </span>{" "}
-                doctores
-              </div>
-
-              {/* Controles de paginación */}
-              <div className="flex items-center gap-2">
-                {/* Botón Primera Página */}
-                <button
-                  onClick={() => goToPage(1)}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="Primera página"
-                >
-                  <svg
-                    className="w-5 h-5 text-gray-600 dark:text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-                    />
-                  </svg>
-                </button>
-
-                {/* Botón Anterior */}
-                <button
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700 dark:text-gray-300 font-medium"
-                >
-                  Anterior
-                </button>
-
-                {/* Números de página */}
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((page) => {
-                      // Mostrar siempre primera y última página
-                      if (page === 1 || page === totalPages) return true;
-                      // Mostrar páginas cercanas a la actual
-                      return Math.abs(page - currentPage) <= 1;
-                    })
-                    .map((page, index, array) => (
-                      <div key={page} className="flex items-center">
-                        {/* Mostrar "..." si hay gap */}
-                        {index > 0 && page - array[index - 1] > 1 && (
-                          <span className="px-2 text-gray-500">...</span>
-                        )}
-                        <button
-                          onClick={() => goToPage(page)}
-                          className={`min-w-[40px] h-10 rounded-lg font-medium transition-colors ${
-                            currentPage === page
-                              ? "bg-blue-500 text-white shadow-lg"
-                              : "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      </div>
-                    ))}
-                </div>
-
-                {/* Botón Siguiente */}
-                <button
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700 dark:text-gray-300 font-medium"
-                >
-                  Siguiente
-                </button>
-
-                {/* Botón Última Página */}
-                <button
-                  onClick={() => goToPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="Última página"
-                >
-                  <svg
-                    className="w-5 h-5 text-gray-600 dark:text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 5l7 7-7 7M5 5l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Modal Formulario */}
