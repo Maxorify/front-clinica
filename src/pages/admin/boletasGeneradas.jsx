@@ -272,7 +272,7 @@ export default function BoletasGeneradas() {
                 </div>
                 <div className="flex-1">
                   <h1 className="text-2xl lg:text-3xl font-bold mb-2">
-                    Boletas Generadas
+                    Comprobantes Generados
                   </h1>
                   <p className="text-indigo-100 text-sm leading-relaxed max-w-2xl">
                     Consulta, filtra y regenera boletas de pagos procesados
@@ -521,7 +521,7 @@ export default function BoletasGeneradas() {
                   </div>
                 </div>
                 <p className="mt-4 text-gray-600 dark:text-gray-400 font-bold text-base">
-                  Cargando boletas...
+                  Cargando comprobantes...
                 </p>
               </motion.div>
             ) : pagosFiltrados.length === 0 ? (
@@ -546,12 +546,12 @@ export default function BoletasGeneradas() {
                   </svg>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                  No hay boletas disponibles
+                  No hay comprobantes disponibles
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md mx-auto">
                   {filtros.busqueda || filtros.fechaDesde || filtros.fechaHasta
-                    ? "No se encontraron boletas con los filtros aplicados. Intenta ajustar tus criterios de búsqueda."
-                    : "Aún no se han generado boletas en el sistema."}
+                    ? "No se encontraron comprobantes con los filtros aplicados. Intenta ajustar tus criterios de búsqueda."
+                    : "Aún no se han generado comprobantes en el sistema."}
                 </p>
               </motion.div>
             ) : (
@@ -592,7 +592,7 @@ export default function BoletasGeneradas() {
                               </div>
                               <div>
                                 <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide mb-0.5">
-                                  Boleta
+                                  Comprobante
                                 </p>
                                 <p className="font-bold text-gray-900 dark:text-white text-lg">
                                   #{String(pago.pago.id).padStart(8, "0")}
@@ -738,7 +738,7 @@ export default function BoletasGeneradas() {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide mb-1">
-                                  Boleta
+                                  Comprobante
                                 </p>
                                 <p className="font-bold text-gray-900 dark:text-white text-lg">
                                   #{String(pago.pago.id).padStart(8, "0")}

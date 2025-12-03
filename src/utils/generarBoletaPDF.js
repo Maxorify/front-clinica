@@ -102,7 +102,7 @@ export const generarBoletaPDF = async ({ datoPago, cita }) => {
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(255, 255, 255);
-  doc.text("BOLETA", 167.5, yPos + 10, { align: "center" });
+  doc.text("COMPROBANTE", 167.5, yPos + 10, { align: "center" });
   
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
