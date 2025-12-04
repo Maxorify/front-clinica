@@ -31,11 +31,8 @@ import MiPerfil from "./pages/doctor/miPerfil";
 import DashboardSecretaria from "./pages/secretaria/dashboardSecretaria";
 import CajaPagos from "./pages/secretaria/cajaPagos";
 import EditarPerfil from "./pages/secretaria/editarPerfil";
-import CheckingPacientes from "./pages/secretaria/checkingPacientes";
 import Recepcion from "./pages/secretaria/recepcion";
 import PacientesSecretaria from "./pages/secretaria/pacientes";
-// AgendarCita removido - ahora usa AgendamientoConsultas optimizado
-// AsistenciaSecretaria removido - ahora usa el mismo componente de admin
 
 import "./App.css";
 
@@ -59,7 +56,7 @@ function App() {
           <Route path="/admin/dashboard" element={<Dashboard />} />
           <Route path="/admin/recepcion" element={<Recepcion />} />
           <Route
-            path="/admin/agendamiento-consultas"
+            path="/admin/agendamiento"
             element={<AgendamientoConsultas />}
           />
           <Route path="/admin/doctores" element={<Doctores />} />

@@ -1,14 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { generarBoletaPDF } from "../../utils/generarBoletaPDF";
 
 const API_URL = "http://localhost:5000";
 
 export default function BoletasGeneradas() {
-  const [pagos, setPagos] = useState([]);
-  const [pagosFiltrados, setPagosFiltrados] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
   const [filtros, setFiltros] = useState({
     fechaDesde: "",
@@ -20,19 +18,19 @@ export default function BoletasGeneradas() {
   const [paginaActual, setPaginaActual] = useState(1);
   const [boletasPorPagina, setBoletasPorPagina] = useState(5);
 
-  // Calcular índices para paginación
-  const indexUltimo = paginaActual * boletasPorPagina;
-  const indexPrimero = indexUltimo - boletasPorPagina;
-  const boletasActuales = pagosFiltrados.slice(indexPrimero, indexUltimo);
-  const totalPaginas = Math.ceil(pagosFiltrados.length / boletasPorPagina);
-
-  useEffect(() => {
-    cargarPagos();
-  }, []);
-
-  useEffect(() => {
-    aplicarFiltros();
-  }, [filtros, pagos]);
+  // React Query: Obtener pagos con cache de 3 minutos
+  const { data: pagos = [], isLoading: loading } = useQuery({
+    queryKey: ["pagos"],
+    queryFn: async () => {
+      const response = await axios.get(`${API_URL}/Citas/listar-pagos`);
+      return response.data.pagos || [];
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutos
+    onError: (error) => {
+      console.error("Error al cargar pagos:", error);
+      showNotification("error", "Error al cargar las boletas");
+    },
+  });
 
   useEffect(() => {
     if (!notification) return;
@@ -44,23 +42,8 @@ export default function BoletasGeneradas() {
     setNotification({ id: Date.now(), type, message });
   };
 
-  const cargarPagos = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get(`${API_URL}/Citas/listar-pagos`);
-      setPagos(response.data.pagos || []);
-      setPagosFiltrados(response.data.pagos || []);
-    } catch (error) {
-      console.error("Error al cargar pagos:", error);
-      showNotification("error", "Error al cargar las boletas");
-      setPagos([]);
-      setPagosFiltrados([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const aplicarFiltros = () => {
+  // Aplicar filtros de forma reactiva con useMemo
+  const pagosFiltrados = useMemo(() => {
     let resultado = [...pagos];
 
     // Filtrar por fecha desde
@@ -100,9 +83,19 @@ export default function BoletasGeneradas() {
       });
     }
 
-    setPagosFiltrados(resultado);
-    setPaginaActual(1); // Reset a primera página cuando se aplican filtros
-  };
+    return resultado;
+  }, [filtros, pagos]);
+
+  // Resetear a página 1 cuando cambian los filtros
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [filtros]);
+
+  // Calcular índices para paginación
+  const indexUltimo = paginaActual * boletasPorPagina;
+  const indexPrimero = indexUltimo - boletasPorPagina;
+  const boletasActuales = pagosFiltrados.slice(indexPrimero, indexUltimo);
+  const totalPaginas = Math.ceil(pagosFiltrados.length / boletasPorPagina);
 
   const cambiarPagina = (numeroPagina) => {
     setPaginaActual(numeroPagina);

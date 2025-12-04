@@ -1,15 +1,35 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const API_URL = "http://localhost:5000";
 
+// Funciones de fetch para React Query
+const fetchEspecialidades = async () => {
+  const { data } = await axios.get(`${API_URL}/doctores/especialidades`);
+  return data.especialidades || [];
+};
+
+const fetchDoctoresPaginado = async (page, pageSize, search) => {
+  const params = { page, page_size: pageSize };
+  if (search?.trim()) params.search = search.trim();
+
+  const { data } = await axios.get(
+    `${API_URL}/Usuarios/listar-doctores-paginado`,
+    { params }
+  );
+  return {
+    doctores: data?.doctores || [],
+    total: data?.total || 0,
+    total_pages: data?.total_pages || 0,
+  };
+};
+
 export default function Doctores() {
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [doctores, setDoctores] = useState([]);
-  const [especialidades, setEspecialidades] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [notification, setNotification] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -18,9 +38,26 @@ export default function Doctores() {
 
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalDoctores, setTotalDoctores] = useState(0);
   const pageSize = 6; // 6 doctores por página
+
+  // REACT QUERY - Especialidades compartidas (caché 10 min)
+  const { data: especialidades = [] } = useQuery({
+    queryKey: ["especialidades"],
+    queryFn: fetchEspecialidades,
+    staleTime: 10 * 60 * 1000, // 10 minutos - dato estático
+  });
+
+  // REACT QUERY - Doctores paginados con caché (5 min) + keepPreviousData
+  const { data: doctoresData, isLoading: loading } = useQuery({
+    queryKey: ["doctores-paginado", currentPage, pageSize, searchTerm],
+    queryFn: () => fetchDoctoresPaginado(currentPage, pageSize, searchTerm),
+    staleTime: 5 * 60 * 1000,
+    keepPreviousData: true, // Mantiene data anterior mientras carga nueva página (UX suave)
+  });
+
+  const doctores = doctoresData?.doctores || [];
+  const totalDoctores = doctoresData?.total || 0;
+  const totalPages = doctoresData?.total_pages || 0;
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -63,16 +100,6 @@ export default function Doctores() {
     return password;
   };
 
-  // Cargar especialidades solo al montar
-  useEffect(() => {
-    cargarEspecialidades();
-  }, []);
-
-  // Cargar doctores cuando cambia la página o búsqueda
-  useEffect(() => {
-    cargarDoctores();
-  }, [currentPage, searchTerm]);
-
   // Ocultar automáticamente la notificación después de unos segundos
   useEffect(() => {
     if (!notification) return;
@@ -82,51 +109,6 @@ export default function Doctores() {
 
   const showNotification = (type, message) => {
     setNotification({ id: Date.now(), type, message });
-  };
-
-  const cargarDoctores = async () => {
-    try {
-      setLoading(true);
-      const params = {
-        page: currentPage,
-        page_size: pageSize,
-      };
-
-      // Agregar búsqueda si existe
-      if (searchTerm.trim()) {
-        params.search = searchTerm.trim();
-      }
-
-      const response = await axios.get(
-        `${API_URL}/Usuarios/listar-doctores-paginado`,
-        { params }
-      );
-
-      setDoctores(response.data?.doctores || []);
-      setTotalDoctores(response.data?.total || 0);
-      setTotalPages(response.data?.total_pages || 0);
-    } catch (error) {
-      if (error.response?.status !== 404) {
-        console.error("Error al cargar doctores:", error);
-        showNotification("error", "Error al cargar doctores");
-      }
-      setDoctores([]);
-      setTotalDoctores(0);
-      setTotalPages(0);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cargarEspecialidades = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/doctores/especialidades`);
-      setEspecialidades(response.data.especialidades || []);
-    } catch (error) {
-      if (error.response?.status !== 404) {
-        console.error("Error al cargar especialidades:", error);
-      }
-    }
   };
 
   const handleInputChange = (e) => {
@@ -168,7 +150,6 @@ export default function Doctores() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
 
     try {
       // Preparar datos base
@@ -208,7 +189,8 @@ export default function Doctores() {
         setShowPasswordModal(true);
       }
 
-      await cargarDoctores();
+      // Invalidar caché para recargar doctores automáticamente
+      queryClient.invalidateQueries(["doctores-paginado"]);
       cerrarModal();
     } catch (error) {
       console.error("Error al guardar doctor:", error);
@@ -216,8 +198,6 @@ export default function Doctores() {
         "error",
         error.response?.data?.detail || "Error al guardar doctor"
       );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -244,7 +224,8 @@ export default function Doctores() {
     try {
       await axios.delete(`${API_URL}/Usuarios/eliminar-usuario/${id}`);
       showNotification("success", "Doctor eliminado correctamente");
-      await cargarDoctores();
+      // Invalidar caché para recargar doctores automáticamente
+      queryClient.invalidateQueries(["doctores-paginado"]);
     } catch (error) {
       console.error("Error al eliminar doctor:", error);
       showNotification(
@@ -1270,16 +1251,10 @@ export default function Doctores() {
                   </button>
                   <button
                     type="submit"
-                    disabled={
-                      loading || formData.especialidades_ids.length === 0
-                    }
+                    disabled={formData.especialidades_ids.length === 0}
                     className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading
-                      ? "Guardando..."
-                      : editingId
-                      ? "Actualizar"
-                      : "Guardar"}
+                    {editingId ? "Actualizar" : "Guardar"}
                   </button>
                 </div>
               </form>

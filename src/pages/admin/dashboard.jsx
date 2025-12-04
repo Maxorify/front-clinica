@@ -1,9 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import axios from "axios";
+import { useQuery } from "@tanstack/react-query";
 
 const API_URL = "http://localhost:5000";
+
+// Funciones de fetch para React Query
+const fetchEstadisticas = async () => {
+  const { data } = await axios.get(`${API_URL}/Dashboard/estadisticas`);
+  return data?.estadisticas || {};
+};
+
+const fetchCitasRecientes = async (limite) => {
+  const { data } = await axios.get(
+    `${API_URL}/Dashboard/citas-recientes?limite=${limite}`
+  );
+  return data?.citas || [];
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -94,80 +108,56 @@ export default function Dashboard() {
     },
   ]);
 
-  const [recentAppointments, setRecentAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // REACT QUERY - Caché automático para estadísticas (3 min)
+  const { data: estadisticas = {}, isLoading: loadingStats } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: fetchEstadisticas,
+    staleTime: 3 * 60 * 1000, // 3 minutos - datos semi-estáticos
+  });
 
-  useEffect(() => {
-    const abortController = new AbortController();
-    cargarDatosDashboard(abortController.signal);
+  // REACT QUERY - Caché para citas recientes (1 min)
+  const { data: recentAppointments = [], isLoading: loadingCitas } = useQuery({
+    queryKey: ["citas-recientes", 5],
+    queryFn: () => fetchCitasRecientes(5),
+    staleTime: 1 * 60 * 1000, // 1 minuto - datos más dinámicos
+  });
 
-    // Cleanup: cancelar peticiones pendientes cuando se desmonte el componente
-    return () => {
-      abortController.abort();
-    };
-  }, []);
+  const loading = loadingStats || loadingCitas;
 
-  const cargarDatosDashboard = async (signal) => {
-    setLoading(true);
-    try {
-      // Cargar estadísticas
-      const statsResponse = await axios.get(
-        `${API_URL}/Dashboard/estadisticas`,
-        { signal }
-      );
-      const estadisticas = statsResponse.data?.estadisticas || {};
-
-      // Actualizar stats con datos reales
-      setStats([
-        {
-          title: "Total Pacientes",
-          value: estadisticas.total_pacientes?.toString() || "0",
-          change: estadisticas.cambio_pacientes || "+0%",
-          icon: stats[0].icon,
-          color: "blue",
-        },
-        {
-          title: "Citas Hoy",
-          value: estadisticas.citas_hoy?.toString() || "0",
-          change: estadisticas.cambio_citas || "+0%",
-          icon: stats[1].icon,
-          color: "green",
-        },
-        {
-          title: "Doctores Activos",
-          value: estadisticas.doctores_activos?.toString() || "0",
-          change: estadisticas.cambio_doctores || "+0",
-          icon: stats[2].icon,
-          color: "purple",
-        },
-        {
-          title: "Ingresos del Mes",
-          value: `$${
-            estadisticas.ingresos_mes?.toLocaleString("es-CL") || "0"
-          }`,
-          change: estadisticas.cambio_ingresos || "+0%",
-          icon: stats[3].icon,
-          color: "yellow",
-        },
-      ]);
-
-      // Cargar citas recientes
-      const citasResponse = await axios.get(
-        `${API_URL}/Dashboard/citas-recientes?limite=5`,
-        { signal }
-      );
-      setRecentAppointments(citasResponse.data?.citas || []);
-    } catch (error) {
-      // Ignorar errores de cancelación
-      if (error.name === "CanceledError" || error.code === "ERR_CANCELED") {
-        console.log("Petición cancelada correctamente");
-        return;
-      }
-      console.error("Error al cargar datos del dashboard:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Computar stats desde estadísticas con useMemo
+  const statsComputadas = useMemo(
+    () => [
+      {
+        title: "Total Pacientes",
+        value: estadisticas.total_pacientes?.toString() || "0",
+        change: estadisticas.cambio_pacientes || "+0%",
+        icon: stats[0].icon,
+        color: "blue",
+      },
+      {
+        title: "Citas Hoy",
+        value: estadisticas.citas_hoy?.toString() || "0",
+        change: estadisticas.cambio_citas || "+0%",
+        icon: stats[1].icon,
+        color: "green",
+      },
+      {
+        title: "Doctores Activos",
+        value: estadisticas.doctores_activos?.toString() || "0",
+        change: estadisticas.cambio_doctores || "+0",
+        icon: stats[2].icon,
+        color: "purple",
+      },
+      {
+        title: "Ingresos del Mes",
+        value: `$${estadisticas.ingresos_mes?.toLocaleString("es-CL") || "0"}`,
+        change: estadisticas.cambio_ingresos || "+0%",
+        icon: stats[3].icon,
+        color: "yellow",
+      },
+    ],
+    [estadisticas, stats]
+  );
 
   const getColorClasses = (color) => {
     const colors = {
@@ -226,7 +216,7 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {stats.map((stat, index) => (
+            {statsComputadas.map((stat, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}

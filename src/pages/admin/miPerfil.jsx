@@ -1,10 +1,54 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const API_URL = 'http://localhost:5000';
 
 export default function AjustesSistema() {
+  const queryClient = useQueryClient();
+  
+  // Obtener ID del usuario desde localStorage
+  const getUserId = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return null;
+      const userData = JSON.parse(userStr);
+      return userData?.id || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const usuarioId = getUserId();
+
+  // React Query para cargar perfil
+  const { data: perfilData, isLoading: loading } = useQuery({
+    queryKey: ['perfil', usuarioId],
+    queryFn: async () => {
+      if (!usuarioId) {
+        throw new Error('No se encontró información del usuario. Por favor, inicie sesión nuevamente.');
+      }
+      const response = await axios.get(`${API_URL}/Perfil/obtener/${usuarioId}`);
+      const perfil = response.data?.perfil || {};
+      return {
+        nombre: perfil.nombre || '',
+        apellido_paterno: perfil.apellido_paterno || '',
+        apellido_materno: perfil.apellido_materno || '',
+        rut: perfil.rut || '',
+        email: perfil.email || '',
+        celular: perfil.celular || '',
+        cel_secundario: perfil.cel_secundario || '',
+        direccion: perfil.direccion || ''
+      };
+    },
+    staleTime: 5 * 60 * 1000, // 5 min - perfil cambia raramente
+    enabled: !!usuarioId,
+    onError: (error) => {
+      showNotification('error', error.message || 'Error al cargar el perfil del usuario.');
+    }
+  });
+
   const [perfil, setPerfil] = useState({
     nombre: '',
     apellido_paterno: '',
@@ -15,16 +59,16 @@ export default function AjustesSistema() {
     cel_secundario: '',
     direccion: ''
   });
-  const [perfilOriginal, setPerfilOriginal] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState(null);
-  const [hasChanges, setHasChanges] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // Sincronizar perfil local con datos de React Query
   useEffect(() => {
-    cargarPerfil();
-  }, []);
+    if (perfilData) {
+      setPerfil(perfilData);
+    }
+  }, [perfilData]);
 
   useEffect(() => {
     if (!notification) return;
@@ -32,67 +76,14 @@ export default function AjustesSistema() {
     return () => clearTimeout(timer);
   }, [notification]);
 
-  useEffect(() => {
-    if (perfilOriginal) {
-      const changed = Object.keys(perfil).some(key => perfil[key] !== perfilOriginal[key]);
-      setHasChanges(changed);
-    }
-  }, [perfil, perfilOriginal]);
+  // Detectar cambios comparando perfil actual vs datos originales (perfilData)
+  const hasChanges = useMemo(() => {
+    if (!perfilData) return false;
+    return Object.keys(perfil).some(key => perfil[key] !== perfilData[key]);
+  }, [perfil, perfilData]);
 
   const showNotification = (type, message) => {
     setNotification({ id: Date.now(), type, message });
-  };
-
-  const cargarPerfil = async () => {
-    setLoading(true);
-    try {
-      // Obtener el ID del usuario desde localStorage (guardado en el login)
-      const userStr = localStorage.getItem('user');
-      if (!userStr) {
-        showNotification('error', 'No se encontró información del usuario. Por favor, inicie sesión nuevamente.');
-        return;
-      }
-
-      const userData = JSON.parse(userStr);
-      const usuarioId = userData?.id;
-
-      if (!usuarioId) {
-        showNotification('error', 'No se encontró el ID del usuario.');
-        return;
-      }
-
-      const response = await axios.get(`${API_URL}/Perfil/obtener/${usuarioId}`);
-      const perfilData = response.data?.perfil || {};
-
-      setPerfil({
-        nombre: perfilData.nombre || '',
-        apellido_paterno: perfilData.apellido_paterno || '',
-        apellido_materno: perfilData.apellido_materno || '',
-        rut: perfilData.rut || '',
-        email: perfilData.email || '',
-        celular: perfilData.celular || '',
-        cel_secundario: perfilData.cel_secundario || '',
-        direccion: perfilData.direccion || ''
-      });
-
-      setPerfilOriginal({
-        nombre: perfilData.nombre || '',
-        apellido_paterno: perfilData.apellido_paterno || '',
-        apellido_materno: perfilData.apellido_materno || '',
-        rut: perfilData.rut || '',
-        email: perfilData.email || '',
-        celular: perfilData.celular || '',
-        cel_secundario: perfilData.cel_secundario || '',
-        direccion: perfilData.direccion || ''
-      });
-
-      setHasChanges(false);
-    } catch (error) {
-      console.error('Error al cargar perfil:', error);
-      showNotification('error', 'Error al cargar el perfil del usuario.');
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleInputChange = (field, value) => {
@@ -149,25 +140,26 @@ export default function AjustesSistema() {
 
     setSaving(true);
     try {
-      const userStr = localStorage.getItem('user');
-      const userData = JSON.parse(userStr);
-      const usuarioId = userData?.id;
-
       await axios.put(`${API_URL}/Perfil/actualizar/${usuarioId}`, perfil);
 
       showNotification('success', 'Perfil actualizado correctamente.');
-      setPerfilOriginal({ ...perfil });
-      setHasChanges(false);
+
+      // Invalidar cache de React Query para refrescar datos
+      queryClient.invalidateQueries(['perfil', usuarioId]);
 
       // Actualizar localStorage con los nuevos datos del usuario
-      const updatedUserData = {
-        ...userData,
-        nombre: perfil.nombre,
-        apellido_paterno: perfil.apellido_paterno,
-        apellido_materno: perfil.apellido_materno,
-        email: perfil.email
-      };
-      localStorage.setItem('user', JSON.stringify(updatedUserData));
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        const updatedUserData = {
+          ...userData,
+          nombre: perfil.nombre,
+          apellido_paterno: perfil.apellido_paterno,
+          apellido_materno: perfil.apellido_materno,
+          email: perfil.email
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUserData));
+      }
 
     } catch (error) {
       console.error('Error al guardar perfil:', error);
@@ -179,8 +171,9 @@ export default function AjustesSistema() {
   };
 
   const cancelarCambios = () => {
-    setPerfil({ ...perfilOriginal });
-    setHasChanges(false);
+    if (perfilData) {
+      setPerfil({ ...perfilData });
+    }
     setErrors({});
   };
 

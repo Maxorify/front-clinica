@@ -2,11 +2,13 @@
  * Vista profesional de asistencia de doctores
  * Timeline + Cards + Panel lateral de detalle
  * Diseño moderno glassmórfico con actualizaciones en tiempo real
+ * OPTIMIZADO: React Query para caché inteligente
  */
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import * as XLSX from "xlsx";
+import { useQuery } from "@tanstack/react-query";
 import {
   BarChart,
   Bar,
@@ -26,17 +28,55 @@ const API_URL = "http://localhost:5000";
 // Helper para parsear fechas UTC del backend correctamente
 const parseUTCDate = (dateString) => {
   if (!dateString) return null;
-  // Si ya termina en Z, usar directamente. Si no, agregarlo
-  const dateStr = dateString.endsWith('Z') ? dateString : dateString + 'Z';
+  const dateStr = dateString.endsWith("Z") ? dateString : dateString + "Z";
   return new Date(dateStr);
+};
+
+// Funciones de fetch para React Query
+const fetchTurnosDia = async (fecha) => {
+  const params = fecha ? { fecha } : {};
+  const { data } = await axios.get(`${API_URL}/asistencia/turnos-dia`, {
+    params,
+  });
+
+  const turnosData = data?.turnos || [];
+  return turnosData.map((turno) => {
+    const nombreCompleto =
+      turno.doctor.nombre_completo ||
+      `${turno.doctor.nombre || ""} ${turno.doctor.apellido_paterno || ""} ${
+        turno.doctor.apellido_materno || ""
+      }`.trim() ||
+      "Doctor sin nombre";
+
+    return {
+      id: turno.id,
+      usuario_sistema_id: turno.doctor.id,
+      usuario_sistema: {
+        id: turno.doctor.id,
+        nombre: turno.doctor.nombre || "",
+        apellido_paterno: turno.doctor.apellido_paterno || "",
+        apellido_materno: turno.doctor.apellido_materno || "",
+        nombre_completo: nombreCompleto,
+        rut: turno.doctor.rut || "",
+        especialidades: Array.isArray(turno.doctor.especialidades)
+          ? turno.doctor.especialidades
+          : [],
+        email: turno.doctor.email || "",
+        celular: turno.doctor.celular || "",
+        rol: { nombre: "Doctor" },
+      },
+      inicio_turno: turno.marca_entrada || turno.inicio_turno,
+      finalizacion_turno: turno.marca_salida,
+      estado: turno.estado_asistencia,
+      minutos_atraso: turno.minutos_atraso || 0,
+      marca_entrada: turno.marca_entrada,
+      marca_salida: turno.marca_salida,
+    };
+  });
 };
 
 export default function Asistencia() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [asistencias, setAsistencias] = useState([]);
-  // empleados ya no se necesita - todo viene en asistencias desde /turnos-dia
-  const [turnosActivos, setTurnosActivos] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState(null);
   const [menuAbiertoId, setMenuAbiertoId] = useState(null);
@@ -47,10 +87,57 @@ export default function Asistencia() {
     solo_activos: false,
   });
 
+  // REACT QUERY - Caché automático de 5 minutos
+  const {
+    data: asistencias = [],
+    isLoading: loading,
+    refetch,
+  } = useQuery({
+    queryKey: ["turnos-dia", filtros.fecha_inicio || filtros.fecha_fin],
+    queryFn: () => fetchTurnosDia(filtros.fecha_inicio || filtros.fecha_fin),
+    staleTime: 2 * 60 * 1000, // 2 minutos para asistencia (datos más dinámicos)
+  });
+
+  const turnosActivos = useMemo(() => {
+    return asistencias
+      .filter((t) => t.estado === "EN_TURNO")
+      .map((t) => ({
+        usuario_sistema_id: t.usuario_sistema_id,
+        id: t.id,
+      }));
+  }, [asistencias]);
+
   useEffect(() => {
-    cargarAsistencias();
-    cargarTurnosActivos();
-  }, []);
+    if (!notification) return;
+    const timer = setTimeout(() => setNotification(null), 4000);
+    return () => clearTimeout(timer);
+  }, [notification]);
+
+  // Cerrar menú al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = () => setMenuAbiertoId(null);
+    if (menuAbiertoId) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [menuAbiertoId]);
+  const cargarTurnosActivos = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/asistencia/turnos-dia`);
+      const turnosEnCurso =
+        response.data?.turnos?.filter((t) => t.estado === "EN_TURNO") || [];
+      setTurnosActivos(
+        turnosEnCurso.map((t) => ({
+          usuario_sistema_id: t.doctor.id,
+          id: t.asistencia_id,
+        }))
+      );
+    } catch (error) {
+      if (error.response?.status !== 404) {
+        console.error("Error al cargar turnos activos:", error);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!notification) return;
@@ -71,92 +158,13 @@ export default function Asistencia() {
     setNotification({ id: Date.now(), type, message });
   };
 
-  const cargarAsistencias = async () => {
-    try {
-      const params = {};
-      if (filtros.fecha_inicio) params.fecha = filtros.fecha_inicio;
-      else if (filtros.fecha_fin) params.fecha = filtros.fecha_fin;
-      // El nuevo endpoint usa fecha única, no rango
-
-      const response = await axios.get(`${API_URL}/asistencia/turnos-dia`, {
-        params,
-      });
-
-      // Convertir formato del backend al formato esperado por el frontend
-      const turnosData = response.data?.turnos || [];
-
-      const asistenciasFormateadas = turnosData.map((turno) => {
-        // Construir nombre completo con múltiples fallbacks
-        const nombreCompleto =
-          turno.doctor.nombre_completo ||
-          `${turno.doctor.nombre || ""} ${
-            turno.doctor.apellido_paterno || ""
-          } ${turno.doctor.apellido_materno || ""}`.trim() ||
-          "Doctor sin nombre";
-
-        return {
-          id: turno.id,
-          usuario_sistema_id: turno.doctor.id,
-          usuario_sistema: {
-            id: turno.doctor.id,
-            nombre: turno.doctor.nombre || "",
-            apellido_paterno: turno.doctor.apellido_paterno || "",
-            apellido_materno: turno.doctor.apellido_materno || "",
-            nombre_completo: nombreCompleto,
-            rut: turno.doctor.rut || "",
-            especialidades: Array.isArray(turno.doctor.especialidades)
-              ? turno.doctor.especialidades
-              : [],
-            email: turno.doctor.email || "",
-            celular: turno.doctor.celular || "",
-            rol: { nombre: "Doctor" },
-          },
-          inicio_turno: turno.marca_entrada || turno.inicio_turno,
-          finalizacion_turno: turno.marca_salida, // Solo marca real, no programado
-          estado: turno.estado_asistencia,
-          minutos_atraso: turno.minutos_atraso || 0,
-          marca_entrada: turno.marca_entrada,
-          marca_salida: turno.marca_salida,
-        };
-      });
-
-      setAsistencias(asistenciasFormateadas);
-    } catch (error) {
-      if (error.response?.status !== 404) {
-        console.error("Error al cargar asistencias:", error);
-        showNotification("error", "Error al cargar asistencias");
-      }
-      setAsistencias([]);
-    }
-  };
-
-  // Ya no necesitamos cargar empleados por separado - todo viene en /turnos-dia
-
-  const cargarTurnosActivos = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/asistencia/turnos-dia`);
-      const turnosEnCurso =
-        response.data?.turnos?.filter((t) => t.estado === "EN_TURNO") || [];
-      setTurnosActivos(
-        turnosEnCurso.map((t) => ({
-          usuario_sistema_id: t.doctor.id,
-          id: t.asistencia_id,
-        }))
-      );
-    } catch (error) {
-      if (error.response?.status !== 404) {
-        console.error("Error al cargar turnos activos:", error);
-      }
-    }
-  };
-
   const handleFiltroChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFiltros({ ...filtros, [name]: type === "checkbox" ? checked : value });
   };
 
   const aplicarFiltros = () => {
-    cargarAsistencias();
+    refetch(); // React Query refetch
   };
 
   const limpiarFiltros = () => {
@@ -166,7 +174,7 @@ export default function Asistencia() {
       usuario_id: "",
       solo_activos: false,
     });
-    setTimeout(cargarAsistencias, 100);
+    setTimeout(() => refetch(), 100);
   };
 
   const registrarSalida = async (asistenciaId) => {
@@ -175,8 +183,7 @@ export default function Asistencia() {
         `${API_URL}/asistencia/registrar-salida/${asistenciaId}`
       );
       showNotification("success", "Salida registrada correctamente");
-      await cargarAsistencias();
-      await cargarTurnosActivos();
+      await refetch(); // Refetch con React Query
     } catch (error) {
       showNotification(
         "error",
@@ -309,10 +316,12 @@ export default function Asistencia() {
       0
     );
     const diasSemana = new Set(
-      asistenciasSemana.map((a) => {
-        const fecha = parseUTCDate(a.inicio_turno);
-        return fecha ? fecha.toDateString() : null;
-      }).filter(Boolean)
+      asistenciasSemana
+        .map((a) => {
+          const fecha = parseUTCDate(a.inicio_turno);
+          return fecha ? fecha.toDateString() : null;
+        })
+        .filter(Boolean)
     ).size;
 
     // Este mes
@@ -331,10 +340,12 @@ export default function Asistencia() {
       0
     );
     const diasMes = new Set(
-      asistenciasMes.map((a) => {
-        const fecha = parseUTCDate(a.inicio_turno);
-        return fecha ? fecha.toDateString() : null;
-      }).filter(Boolean)
+      asistenciasMes
+        .map((a) => {
+          const fecha = parseUTCDate(a.inicio_turno);
+          return fecha ? fecha.toDateString() : null;
+        })
+        .filter(Boolean)
     ).size;
 
     // Datos para el gráfico (últimos 7 días)
@@ -348,7 +359,10 @@ export default function Asistencia() {
 
       const asistenciasDia = asistenciasEmpleado.filter((a) => {
         const fechaAsistencia = parseUTCDate(a.inicio_turno);
-        return fechaAsistencia && fechaAsistencia.toDateString() === fecha.toDateString();
+        return (
+          fechaAsistencia &&
+          fechaAsistencia.toDateString() === fecha.toDateString()
+        );
       });
 
       const horasDia = asistenciasDia.reduce(
@@ -1340,16 +1354,21 @@ export default function Asistencia() {
                           .slice(0, 5)
                           .filter((a) => a.inicio_turno) // Filtrar registros sin fecha válida
                           .map((asistencia, idx) => {
-                            const inicioDate = parseUTCDate(asistencia.inicio_turno);
-                            const finDate = parseUTCDate(asistencia.finalizacion_turno);
-                            
+                            const inicioDate = parseUTCDate(
+                              asistencia.inicio_turno
+                            );
+                            const finDate = parseUTCDate(
+                              asistencia.finalizacion_turno
+                            );
+
                             const horasTrabajadas =
                               finDate && inicioDate
                                 ? (finDate - inicioDate) / (1000 * 60 * 60)
                                 : 0;
 
                             // Validar que inicio_turno sea una fecha válida
-                            const esFechaValida = inicioDate && !isNaN(inicioDate.getTime());
+                            const esFechaValida =
+                              inicioDate && !isNaN(inicioDate.getTime());
 
                             if (!esFechaValida) return null; // Saltar si la fecha no es válida
 
@@ -1370,7 +1389,8 @@ export default function Asistencia() {
                                     {inicioDate.toLocaleTimeString("es-CL", {
                                       hour: "2-digit",
                                       minute: "2-digit",
-                                    })} -{" "}
+                                    })}{" "}
+                                    -{" "}
                                     {finDate
                                       ? finDate.toLocaleTimeString("es-CL", {
                                           hour: "2-digit",

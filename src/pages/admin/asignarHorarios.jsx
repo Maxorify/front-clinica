@@ -1,15 +1,96 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getChileDayStart, getChileDayEnd } from "../../utils/dateUtils";
 
 const API_URL = "http://localhost:5000";
 
 export default function AsignarHorarios() {
-  const [doctores, setDoctores] = useState([]);
+  const queryClient = useQueryClient();
+  
+  // React Query para cargar doctores (usuarios con rol_id=2)
+  const { data: doctores = [] } = useQuery({
+    queryKey: ['usuarios'], // Shared cache con usuariosSistema.jsx
+    queryFn: async () => {
+      const response = await axios.get(`${API_URL}/Usuarios/listar-usuarios`);
+      return response.data?.usuarios || [];
+    },
+    staleTime: 2 * 60 * 1000, // 2 min cache
+    select: (data) => data.filter(u => u.rol_id === 2), // Filter doctores
+    onError: (error) => {
+      console.error('Error al cargar doctores:', error);
+      showNotification('error', 'Error al cargar doctores');
+    }
+  });
+
   const [doctorSeleccionado, setDoctorSeleccionado] = useState(null);
-  const [horarios, setHorarios] = useState([]);
-  const [loading, setLoading] = useState(false);
+  
+  // React Query para cargar horarios del doctor seleccionado
+  const { data: horarios = [], isLoading: loading } = useQuery({
+    queryKey: ['horarios', doctorSeleccionado?.id, fechaActual.toISOString(), vistaCalendario],
+    queryFn: async () => {
+      if (!doctorSeleccionado) return [];
+      
+      // Calcular rango de fechas según la vista
+      let inicio, fin;
+
+      if (vistaCalendario === "semana") {
+        // Para vista semanal: lunes a domingo de la semana actual
+        const fechaBase = new Date(fechaActual);
+        const diaSemana = fechaBase.getDay();
+        const diasHastaLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+        fechaBase.setDate(fechaBase.getDate() + diasHastaLunes);
+
+        const fechaInicioStr = fechaBase.toISOString().split("T")[0];
+
+        fechaBase.setDate(fechaBase.getDate() + 6); // Domingo
+        const fechaFinStr = fechaBase.toISOString().split("T")[0];
+
+        inicio = getChileDayStart(fechaInicioStr);
+        fin = getChileDayEnd(fechaFinStr);
+      } else {
+        // Para vista mensual: todo el mes
+        const primerDia = new Date(
+          fechaActual.getFullYear(),
+          fechaActual.getMonth(),
+          1
+        );
+        const ultimoDia = new Date(
+          fechaActual.getFullYear(),
+          fechaActual.getMonth() + 1,
+          0
+        );
+
+        inicio = getChileDayStart(primerDia.toISOString().split("T")[0]);
+        fin = getChileDayEnd(ultimoDia.toISOString().split("T")[0]);
+      }
+
+      console.log(
+        "DEBUG - Cargando horarios para rango:",
+        inicio.toISOString(),
+        "a",
+        fin.toISOString()
+      );
+
+      const response = await axios.get(`${API_URL}/Horarios/listar-horarios`, {
+        params: {
+          usuario_sistema_id: doctorSeleccionado.id,
+          fecha_inicio: inicio.toISOString(),
+          fecha_fin: fin.toISOString(),
+        },
+      });
+
+      return response.data.horarios || [];
+    },
+    staleTime: 2 * 60 * 1000, // 2 min - horarios cambian con frecuencia moderada
+    enabled: !!doctorSeleccionado, // Solo ejecutar si hay doctor seleccionado
+    onError: (error) => {
+      console.error('Error al cargar horarios:', error);
+      showNotification('error', 'Error al cargar horarios');
+    }
+  });
+
   const [showModal, setShowModal] = useState(false);
   const [vistaCreacion, setVistaCreacion] = useState(false); // Nueva vista split-screen
   const [showEditModal, setShowEditModal] = useState(false);
@@ -123,95 +204,6 @@ export default function AsignarHorarios() {
     setNotification({ id: Date.now(), type, message });
   };
 
-  const cargarDoctores = async (signal) => {
-    try {
-      const response = await axios.get(`${API_URL}/Usuarios/listar-usuarios`, {
-        signal,
-      });
-      const doctoresFiltrados = (response.data?.usuarios || []).filter(
-        (u) => u.rol_id === 2
-      );
-      setDoctores(doctoresFiltrados);
-    } catch (error) {
-      // Ignorar errores de cancelación
-      if (error.name === "CanceledError" || error.code === "ERR_CANCELED") {
-        console.log("Petición cancelada correctamente");
-        return;
-      }
-      console.error("Error al cargar doctores:", error);
-      showNotification("error", "Error al cargar doctores");
-    }
-  };
-
-  const cargarHorarios = async (signal) => {
-    if (!doctorSeleccionado) return;
-
-    setLoading(true);
-    try {
-      // Calcular rango de fechas según la vista
-      let inicio, fin;
-
-      if (vistaCalendario === "semana") {
-        // Para vista semanal: lunes a domingo de la semana actual
-        const fechaBase = new Date(fechaActual);
-        const diaSemana = fechaBase.getDay();
-        const diasHastaLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
-        fechaBase.setDate(fechaBase.getDate() + diasHastaLunes);
-
-        const fechaInicioStr = fechaBase.toISOString().split("T")[0];
-
-        fechaBase.setDate(fechaBase.getDate() + 6); // Domingo
-        const fechaFinStr = fechaBase.toISOString().split("T")[0];
-
-        inicio = getChileDayStart(fechaInicioStr);
-        fin = getChileDayEnd(fechaFinStr);
-      } else {
-        // Para vista mensual: todo el mes
-        const primerDia = new Date(
-          fechaActual.getFullYear(),
-          fechaActual.getMonth(),
-          1
-        );
-        const ultimoDia = new Date(
-          fechaActual.getFullYear(),
-          fechaActual.getMonth() + 1,
-          0
-        );
-
-        inicio = getChileDayStart(primerDia.toISOString().split("T")[0]);
-        fin = getChileDayEnd(ultimoDia.toISOString().split("T")[0]);
-      }
-
-      console.log(
-        "DEBUG - Cargando horarios para rango:",
-        inicio.toISOString(),
-        "a",
-        fin.toISOString()
-      );
-
-      const response = await axios.get(`${API_URL}/Horarios/listar-horarios`, {
-        params: {
-          usuario_sistema_id: doctorSeleccionado.id,
-          fecha_inicio: inicio.toISOString(),
-          fecha_fin: fin.toISOString(),
-        },
-        signal,
-      });
-
-      setHorarios(response.data.horarios || []);
-    } catch (error) {
-      // Ignorar errores de cancelación
-      if (error.name === "CanceledError" || error.code === "ERR_CANCELED") {
-        console.log("Petición cancelada correctamente");
-        return;
-      }
-      console.error("Error al cargar horarios:", error);
-      showNotification("error", "Error al cargar horarios");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const crearHorarioSemanal = async () => {
     if (!doctorSeleccionado) {
       showNotification("error", "Debe seleccionar un doctor");
@@ -302,7 +294,9 @@ export default function AsignarHorarios() {
           },
         },
       });
-      cargarHorarios();
+      
+      // Invalidar cache de horarios para refrescar
+      queryClient.invalidateQueries(['horarios', doctorSeleccionado?.id]);
     } catch (error) {
       console.error("Error al crear horarios:", error);
       showNotification(
@@ -457,7 +451,8 @@ export default function AsignarHorarios() {
         }
       }
 
-      cargarHorarios();
+      // Invalidar cache de horarios
+      queryClient.invalidateQueries(['horarios', doctorSeleccionado?.id]);
     } catch (error) {
       console.error("Error al eliminar horario:", error);
       showNotification("error", "Error al eliminar horario");
@@ -480,7 +475,9 @@ export default function AsignarHorarios() {
         `${API_URL}/Horarios/eliminar-horarios-doctor/${doctorSeleccionado.id}`
       );
       showNotification("success", "Todos los horarios fueron eliminados");
-      cargarHorarios();
+      
+      // Invalidar cache de horarios
+      queryClient.invalidateQueries(['horarios', doctorSeleccionado?.id]);
     } catch (error) {
       console.error("Error al eliminar horarios:", error);
       showNotification("error", "Error al eliminar horarios");
@@ -655,7 +652,9 @@ export default function AsignarHorarios() {
       showNotification("success", "Horario actualizado correctamente");
       setShowEditModal(false);
       setHorarioEditar(null);
-      cargarHorarios();
+      
+      // Invalidar cache de horarios
+      queryClient.invalidateQueries(['horarios', doctorSeleccionado?.id]);
     } catch (error) {
       console.error("Error al actualizar horario:", error);
       showNotification("error", "Error al actualizar horario");
@@ -2177,7 +2176,7 @@ export default function AsignarHorarios() {
                 <button
                   onClick={() => {
                     setShowModal(false);
-                    // Resetear form al cerrar
+                    // Resetear form
                     setFormData({
                       fecha_inicio: new Date().toISOString().split("T")[0],
                       fecha_fin: "",

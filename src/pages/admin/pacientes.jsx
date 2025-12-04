@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const API_URL = "http://localhost:5000";
 
@@ -450,8 +451,6 @@ function DatePicker({
 export default function Pacientes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [pacientes, setPacientes] = useState([]);
-  const [prevenciones, setPrevenciones] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [notification, setNotification] = useState(null);
@@ -514,11 +513,34 @@ export default function Pacientes() {
     return edad.toString();
   };
 
-  // Cargar pacientes y prevenciones al montar el componente
-  useEffect(() => {
-    cargarPacientes();
-    cargarPrevenciones();
-  }, []);
+  const queryClient = useQueryClient();
+
+  // REACT QUERY - Funciones de fetch
+  const fetchPacientes = async () => {
+    const { data } = await axios.get(`${API_URL}/Pacientes/listar-pacientes`);
+    return data.pacientes || [];
+  };
+
+  const fetchPrevenciones = async () => {
+    const { data } = await axios.get(
+      `${API_URL}/Pacientes/listar-prevenciones`
+    );
+    return data.prevenciones || [];
+  };
+
+  // REACT QUERY - Pacientes con caché de 3 minutos
+  const { data: pacientes = [] } = useQuery({
+    queryKey: ["pacientes"],
+    queryFn: fetchPacientes,
+    staleTime: 3 * 60 * 1000, // 3 min - datos que cambian moderadamente
+  });
+
+  // REACT QUERY - Prevenciones con caché de 10 minutos (dato más estático)
+  const { data: prevenciones = [] } = useQuery({
+    queryKey: ["prevenciones"],
+    queryFn: fetchPrevenciones,
+    staleTime: 10 * 60 * 1000, // 10 min - dato estático
+  });
 
   // Actualizar edad cuando cambia la fecha de nacimiento
   useEffect(() => {
@@ -540,31 +562,6 @@ export default function Pacientes() {
 
   const showNotification = (type, message) => {
     setNotification({ id: Date.now(), type, message });
-  };
-
-  const cargarPacientes = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/Pacientes/listar-pacientes`);
-      setPacientes(response.data.pacientes);
-    } catch (error) {
-      if (error.response?.status !== 404) {
-        console.error("Error al cargar pacientes:", error);
-        showNotification("error", "Error al cargar pacientes");
-      }
-    }
-  };
-
-  const cargarPrevenciones = async () => {
-    try {
-      const response = await axios.get(
-        `${API_URL}/Pacientes/listar-prevenciones`
-      );
-      setPrevenciones(response.data.prevenciones);
-    } catch (error) {
-      if (error.response?.status !== 404) {
-        console.error("Error al cargar prevenciones:", error);
-      }
-    }
   };
 
   const handleInputChange = (e) => {
@@ -604,8 +601,8 @@ export default function Pacientes() {
         showNotification("success", "Paciente creado correctamente");
       }
 
-      // Recargar lista y cerrar modal
-      await cargarPacientes();
+      // Invalidar caché para recargar pacientes automáticamente
+      queryClient.invalidateQueries(["pacientes"]);
       cerrarModal();
     } catch (error) {
       console.error("Error al guardar paciente:", error);
@@ -645,7 +642,8 @@ export default function Pacientes() {
     try {
       await axios.delete(`${API_URL}/Pacientes/eliminar-paciente/${id}`);
       showNotification("success", "Paciente eliminado correctamente");
-      await cargarPacientes();
+      // Invalidar caché para recargar pacientes automáticamente
+      queryClient.invalidateQueries(["pacientes"]);
     } catch (error) {
       console.error("Error al eliminar paciente:", error);
       showNotification(

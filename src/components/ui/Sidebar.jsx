@@ -101,7 +101,7 @@ export default function Sidebar({ isOpen, setIsOpen, darkMode, setDarkMode }) {
       items: [
         {
           title: "Agendamiento",
-          path: "/admin/agendamiento-consultas",
+          path: "/admin/agendamiento",
           icon: (
             <svg
               className="w-5 h-5"

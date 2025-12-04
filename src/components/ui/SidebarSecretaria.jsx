@@ -63,7 +63,7 @@ export default function SidebarSecretaria({
       items: [
         {
           title: "Agendar Cita",
-          path: "/secretaria/agendamiento",
+          path: "/admin/agendamiento",
           icon: (
             <svg
               className="w-5 h-5"
