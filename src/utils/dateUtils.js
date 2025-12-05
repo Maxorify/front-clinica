@@ -65,6 +65,26 @@ export const utcToChileTime = (utcDateStr) => {
 };
 
 /**
+ * Convierte una fecha UTC del backend a fecha local de Chile (solo fecha, sin hora)
+ * @param {string} utcDateStr - Fecha en formato ISO UTC
+ * @returns {string} Fecha en formato YYYY-MM-DD en zona horaria Chile
+ */
+export const utcToChileDate = (utcDateStr) => {
+  const date = new Date(utcDateStr);
+  
+  // Convertir a string con zona horaria Chile usando toLocaleString
+  // Esto maneja correctamente DST y conversiones de zona horaria
+  const chileStr = date.toLocaleString('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  
+  return chileStr; // Ya está en formato YYYY-MM-DD
+};
+
+/**
  * Formatea una fecha UTC a string legible en hora de Chile
  * @param {string} utcDateStr - Fecha en formato ISO UTC
  * @returns {string} Fecha formateada en zona horaria de Chile

@@ -29,10 +29,8 @@ import MiPerfil from "./pages/doctor/miPerfil";
 
 // Secretaria Pages
 import DashboardSecretaria from "./pages/secretaria/dashboardSecretaria";
-import CajaPagos from "./pages/secretaria/cajaPagos";
 import EditarPerfil from "./pages/secretaria/editarPerfil";
 import Recepcion from "./pages/secretaria/recepcion";
-import PacientesSecretaria from "./pages/secretaria/pacientes";
 
 import "./App.css";
 
@@ -103,10 +101,7 @@ function App() {
             path="/secretaria/agendamiento"
             element={<AgendamientoConsultas />}
           />
-          <Route
-            path="/secretaria/pacientes"
-            element={<PacientesSecretaria />}
-          />
+          <Route path="/secretaria/pacientes" element={<Pacientes />} />
           <Route path="/secretaria/asistencia" element={<Asistencia />} />
           <Route path="/secretaria/editar-perfil" element={<EditarPerfil />} />
           <Route

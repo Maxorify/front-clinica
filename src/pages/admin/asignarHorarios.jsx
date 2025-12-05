@@ -2,32 +2,96 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getChileDayStart, getChileDayEnd } from "../../utils/dateUtils";
+import { getChileDayStart, getChileDayEnd, utcToChileDate } from "../../utils/dateUtils";
 
 const API_URL = "http://localhost:5000";
 
 export default function AsignarHorarios() {
   const queryClient = useQueryClient();
   
+  // Declarar TODOS los estados primero antes de React Query
+  const [doctorSeleccionado, setDoctorSeleccionado] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [vistaCreacion, setVistaCreacion] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [horarioEditar, setHorarioEditar] = useState(null);
+  const [notification, setNotification] = useState(null);
+  const [vistaCalendario, setVistaCalendario] = useState("semana");
+  const [fechaActual, setFechaActual] = useState(new Date());
+  const [busquedaDoctor, setBusquedaDoctor] = useState("");
+  const [mostrarDropdown, setMostrarDropdown] = useState(false);
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null);
+  const [showDetalleModal, setShowDetalleModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [horarioAEliminar, setHorarioAEliminar] = useState(null);
+  const [mesVistaPrevia, setMesVistaPrevia] = useState(new Date());
+  const [loading, setLoading] = useState(false); // Estado faltante
+  const [formData, setFormData] = useState({
+    fecha_inicio: new Date().toISOString().split("T")[0],
+    fecha_fin: "",
+    dias_configurados: {
+      0: {
+        activo: false,
+        hora_inicio: "08:00",
+        hora_fin: "18:00",
+        duracion_bloque_minutos: 30,
+      },
+      1: {
+        activo: false,
+        hora_inicio: "08:00",
+        hora_fin: "18:00",
+        duracion_bloque_minutos: 30,
+      },
+      2: {
+        activo: false,
+        hora_inicio: "08:00",
+        hora_fin: "18:00",
+        duracion_bloque_minutos: 30,
+      },
+      3: {
+        activo: false,
+        hora_inicio: "08:00",
+        hora_fin: "18:00",
+        duracion_bloque_minutos: 30,
+      },
+      4: {
+        activo: false,
+        hora_inicio: "08:00",
+        hora_fin: "18:00",
+        duracion_bloque_minutos: 30,
+      },
+      5: {
+        activo: false,
+        hora_inicio: "08:00",
+        hora_fin: "18:00",
+        duracion_bloque_minutos: 30,
+      },
+      6: {
+        activo: false,
+        hora_inicio: "08:00",
+        hora_fin: "18:00",
+        duracion_bloque_minutos: 30,
+      },
+    },
+  });
+
   // React Query para cargar doctores (usuarios con rol_id=2)
   const { data: doctores = [] } = useQuery({
-    queryKey: ['usuarios'], // Shared cache con usuariosSistema.jsx
+    queryKey: ['usuarios'],
     queryFn: async () => {
       const response = await axios.get(`${API_URL}/Usuarios/listar-usuarios`);
       return response.data?.usuarios || [];
     },
-    staleTime: 2 * 60 * 1000, // 2 min cache
-    select: (data) => data.filter(u => u.rol_id === 2), // Filter doctores
+    staleTime: 2 * 60 * 1000,
+    select: (data) => data.filter(u => u.rol_id === 2),
     onError: (error) => {
       console.error('Error al cargar doctores:', error);
       showNotification('error', 'Error al cargar doctores');
     }
   });
-
-  const [doctorSeleccionado, setDoctorSeleccionado] = useState(null);
   
-  // React Query para cargar horarios del doctor seleccionado
-  const { data: horarios = [], isLoading: loading } = useQuery({
+  // React Query para cargar horarios del doctor seleccionado (vista normal)
+  const { data: horarios = [], isLoading: loadingHorarios } = useQuery({
     queryKey: ['horarios', doctorSeleccionado?.id, fechaActual.toISOString(), vistaCalendario],
     queryFn: async () => {
       if (!doctorSeleccionado) return [];
@@ -91,68 +155,39 @@ export default function AsignarHorarios() {
     }
   });
 
-  const [showModal, setShowModal] = useState(false);
-  const [vistaCreacion, setVistaCreacion] = useState(false); // Nueva vista split-screen
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [horarioEditar, setHorarioEditar] = useState(null);
-  const [notification, setNotification] = useState(null);
-  const [vistaCalendario, setVistaCalendario] = useState("semana"); // 'semana' o 'mes'
-  const [fechaActual, setFechaActual] = useState(new Date());
-  const [busquedaDoctor, setBusquedaDoctor] = useState("");
-  const [mostrarDropdown, setMostrarDropdown] = useState(false);
-  const [diaSeleccionado, setDiaSeleccionado] = useState(null); // Para el modal de detalle
-  const [showDetalleModal, setShowDetalleModal] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [horarioAEliminar, setHorarioAEliminar] = useState(null);
-  const [mesVistaPrevia, setMesVistaPrevia] = useState(new Date()); // Mes actual en la vista previa
+  // React Query para cargar horarios existentes en vista de creación (rango completo)
+  const { data: horariosExistentes = [] } = useQuery({
+    queryKey: ['horariosExistentes', doctorSeleccionado?.id, formData.fecha_inicio, formData.fecha_fin, mesVistaPrevia.toISOString()],
+    queryFn: async () => {
+      if (!doctorSeleccionado || !vistaCreacion) return [];
+      
+      const fechaInicio = new Date(formData.fecha_inicio);
+      const fechaFin = formData.fecha_fin
+        ? new Date(formData.fecha_fin)
+        : new Date(fechaInicio.getFullYear(), fechaInicio.getMonth() + 3, fechaInicio.getDate());
 
-  const [formData, setFormData] = useState({
-    fecha_inicio: new Date().toISOString().split("T")[0],
-    fecha_fin: "",
-    dias_configurados: {
-      0: {
-        activo: false,
-        hora_inicio: "08:00",
-        hora_fin: "18:00",
-        duracion_bloque_minutos: 30,
-      }, // Lunes
-      1: {
-        activo: false,
-        hora_inicio: "08:00",
-        hora_fin: "18:00",
-        duracion_bloque_minutos: 30,
-      }, // Martes
-      2: {
-        activo: false,
-        hora_inicio: "08:00",
-        hora_fin: "18:00",
-        duracion_bloque_minutos: 30,
-      }, // Miércoles
-      3: {
-        activo: false,
-        hora_inicio: "08:00",
-        hora_fin: "18:00",
-        duracion_bloque_minutos: 30,
-      }, // Jueves
-      4: {
-        activo: false,
-        hora_inicio: "08:00",
-        hora_fin: "18:00",
-        duracion_bloque_minutos: 30,
-      }, // Viernes
-      5: {
-        activo: false,
-        hora_inicio: "08:00",
-        hora_fin: "18:00",
-        duracion_bloque_minutos: 30,
-      }, // Sábado
-      6: {
-        activo: false,
-        hora_inicio: "08:00",
-        hora_fin: "18:00",
-        duracion_bloque_minutos: 30,
-      }, // Domingo
+      // Expandir el rango para incluir todo el mes de vista previa
+      const primerDiaMes = new Date(mesVistaPrevia.getFullYear(), mesVistaPrevia.getMonth(), 1);
+      const ultimoDiaMes = new Date(mesVistaPrevia.getFullYear(), mesVistaPrevia.getMonth() + 1, 0);
+      
+      const inicio = primerDiaMes < fechaInicio ? primerDiaMes : fechaInicio;
+      const fin = ultimoDiaMes > fechaFin ? ultimoDiaMes : fechaFin;
+
+      const response = await axios.get(`${API_URL}/Horarios/listar-horarios`, {
+        params: {
+          usuario_sistema_id: doctorSeleccionado.id,
+          fecha_inicio: inicio.toISOString(),
+          fecha_fin: fin.toISOString(),
+        },
+      });
+
+      return response.data.horarios || [];
     },
+    staleTime: 1 * 60 * 1000, // 1 min - más corto porque estamos creando
+    enabled: !!doctorSeleccionado && vistaCreacion,
+    onError: (error) => {
+      console.error('Error al cargar horarios existentes:', error);
+    }
   });
 
   const diasSemana = [
@@ -165,27 +200,7 @@ export default function AsignarHorarios() {
     "Domingo",
   ];
 
-  useEffect(() => {
-    const abortController = new AbortController();
-    cargarDoctores(abortController.signal);
-
-    // Cleanup: cancelar peticiones pendientes cuando se desmonte
-    return () => {
-      abortController.abort();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (doctorSeleccionado) {
-      const abortController = new AbortController();
-      cargarHorarios(abortController.signal);
-
-      // Cleanup: cancelar peticiones pendientes cuando cambien los filtros
-      return () => {
-        abortController.abort();
-      };
-    }
-  }, [doctorSeleccionado, fechaActual, vistaCalendario]);
+  // Los useEffects obsoletos se eliminaron porque React Query maneja la carga de datos
 
   useEffect(() => {
     if (!notification) return;
@@ -237,14 +252,41 @@ export default function AsignarHorarios() {
         });
       });
 
-      await Promise.all(promises);
+      const resultados = await Promise.all(promises);
+      
+      // Analizar resultados para informar sobre conflictos
+      let totalCreados = 0;
+      let totalSaltados = 0;
+      
+      resultados.forEach(res => {
+        if (res.data.bloques_creados) {
+          totalCreados += res.data.bloques_creados;
+        }
+        if (res.data.bloques_saltados) {
+          totalSaltados += res.data.bloques_saltados;
+        }
+      });
 
-      showNotification(
-        "success",
-        `Horarios creados correctamente para ${diasActivos.length} día(s)`
-      );
+      // Mensaje contextual basado en resultados
+      if (totalSaltados > 0) {
+        showNotification(
+          "success",
+          `✓ ${totalCreados} bloques creados. ${totalSaltados} bloques omitidos (ya existían o conflicto).`
+        );
+      } else {
+        showNotification(
+          "success",
+          `✓ ${totalCreados} bloques de horario creados exitosamente`
+        );
+      }
+      
       setShowModal(false);
       setVistaCreacion(false); // Volver a la vista normal
+      
+      // Invalidar cache para recargar horarios
+      queryClient.invalidateQueries(['horarios', doctorSeleccionado?.id]);
+      queryClient.invalidateQueries(['horariosExistentes', doctorSeleccionado?.id]);
+      
       // Resetear form
       setFormData({
         fecha_inicio: new Date().toISOString().split("T")[0],
@@ -334,6 +376,63 @@ export default function AsignarHorarios() {
     });
   };
 
+  // Función auxiliar para detectar si dos rangos de tiempo se solapan
+  const haySolapamiento = (inicio1, fin1, inicio2, fin2) => {
+    return inicio1 < fin2 && fin1 > inicio2;
+  };
+
+  // Función para verificar si un día tiene conflictos con horarios existentes
+  const verificarConflictos = (fecha, config) => {
+    const fechaStr = fecha.toISOString().split('T')[0];
+    const conflictos = [];
+    
+    // Generar bloques del día planificado
+    const bloquesPlanificados = [];
+    const [horaInicioH, horaInicioM] = config.hora_inicio.split(':');
+    const [horaFinH, horaFinM] = config.hora_fin.split(':');
+    
+    let inicioBloqueLocal = new Date(fecha);
+    inicioBloqueLocal.setHours(parseInt(horaInicioH), parseInt(horaInicioM), 0, 0);
+    
+    const finDiaLocal = new Date(fecha);
+    finDiaLocal.setHours(parseInt(horaFinH), parseInt(horaFinM), 0, 0);
+    
+    while (inicioBloqueLocal < finDiaLocal) {
+      const finBloqueLocal = new Date(inicioBloqueLocal.getTime() + config.duracion_bloque_minutos * 60000);
+      
+      if (finBloqueLocal > finDiaLocal) break;
+      
+      bloquesPlanificados.push({
+        inicio: new Date(inicioBloqueLocal),
+        fin: new Date(finBloqueLocal)
+      });
+      
+      inicioBloqueLocal = finBloqueLocal;
+    }
+    
+    // Verificar solapamientos con horarios existentes
+    bloquesPlanificados.forEach(bloquePlanificado => {
+      horariosExistentes.forEach(existente => {
+        const inicioExistente = new Date(existente.inicio_bloque);
+        const finExistente = new Date(existente.finalizacion_bloque);
+        
+        if (haySolapamiento(
+          bloquePlanificado.inicio,
+          bloquePlanificado.fin,
+          inicioExistente,
+          finExistente
+        )) {
+          conflictos.push({
+            bloqueNuevo: bloquePlanificado,
+            bloqueExistente: existente
+          });
+        }
+      });
+    });
+    
+    return conflictos;
+  };
+
   // Calcular vista previa del calendario para cualquier mes
   const calcularVistaPrevia = () => {
     const diasConHorario = [];
@@ -371,10 +470,13 @@ export default function AsignarHorarios() {
         fechaActual >= fechaInicio &&
         fechaActual <= fechaFin
       ) {
+        const conflictos = verificarConflictos(new Date(fechaActual), config);
         diasConHorario.push({
           fecha: new Date(fechaActual),
           diaSemana: diaSemana,
           config: config,
+          conflictos: conflictos,
+          tieneConflicto: conflictos.length > 0
         });
       }
 
@@ -617,13 +719,17 @@ export default function AsignarHorarios() {
   };
 
   const obtenerHorariosDia = (fecha) => {
-    const fechaStr = fecha.toISOString().split("T")[0];
+    // Obtener fecha sin conversión a UTC
+    const año = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const fechaStr = `${año}-${mes}-${dia}`;
+    
     return horarios
       .filter((h) => {
-        const horarioFecha = new Date(h.inicio_bloque)
-          .toISOString()
-          .split("T")[0];
-        return horarioFecha === fechaStr;
+        // Convertir a hora Chile para comparar fechas
+        const fechaChile = utcToChileDate(h.inicio_bloque);
+        return fechaChile === fechaStr;
       })
       .sort((a, b) => new Date(a.inicio_bloque) - new Date(b.inicio_bloque));
   };
@@ -845,14 +951,28 @@ export default function AsignarHorarios() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={crearHorarioSemanal}
-              disabled={
-                loading ||
-                !Object.values(formData.dias_configurados).some((d) => d.activo)
-              }
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-            >
+            
+            <div className="flex items-center gap-3">
+              {/* Indicador de conflictos */}
+              {diasConHorario.some(d => d.tieneConflicto) && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+                  <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                    {diasConHorario.filter(d => d.tieneConflicto).length} conflicto(s)
+                  </span>
+                </div>
+              )}
+              
+              <button
+                onClick={crearHorarioSemanal}
+                disabled={
+                  loading ||
+                  !Object.values(formData.dias_configurados).some((d) => d.activo)
+                }
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              >
               {loading ? (
                 <>
                   <svg
@@ -895,6 +1015,7 @@ export default function AsignarHorarios() {
                 </>
               )}
             </button>
+            </div>
           </div>
         </div>
 
@@ -1152,7 +1273,7 @@ export default function AsignarHorarios() {
                 </div>
 
                 {/* Estadísticas rápidas */}
-                <div className="grid grid-cols-3 gap-4 p-6 bg-gray-50 dark:bg-gray-900/50">
+                <div className="grid grid-cols-4 gap-4 p-6 bg-gray-50 dark:bg-gray-900/50">
                   <div className="text-center">
                     <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                       {
@@ -1167,10 +1288,18 @@ export default function AsignarHorarios() {
                   </div>
                   <div className="text-center">
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {diasConHorario.length}
+                      {diasConHorario.filter(d => !d.tieneConflicto).length}
                     </p>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      Días con horario
+                      Días válidos
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                      {diasConHorario.filter(d => d.tieneConflicto).length}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      Conflictos
                     </p>
                   </div>
                   <div className="text-center">
@@ -1219,6 +1348,8 @@ export default function AsignarHorarios() {
                     >
                       {diasMes.map((diaObj, index) => {
                         const { fecha, esMesActual } = diaObj;
+                        
+                        // Verificar si tiene horario planificado
                         const tieneHorario = diasConHorario.some(
                           (d) => d.fecha.toDateString() === fecha.toDateString()
                         );
@@ -1228,6 +1359,21 @@ export default function AsignarHorarios() {
                                 d.fecha.toDateString() === fecha.toDateString()
                             )
                           : null;
+                        
+                        // Verificar si tiene horarios existentes
+                        // Obtener fecha sin conversión a UTC
+                        const año = fecha.getFullYear();
+                        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                        const dia = String(fecha.getDate()).padStart(2, '0');
+                        const fechaStr = `${año}-${mes}-${dia}`;
+                        
+                        const horariosDelDia = horariosExistentes.filter(h => {
+                          // Convertir a hora Chile usando la utilidad
+                          const fechaChile = utcToChileDate(h.inicio_bloque);
+                          return fechaChile === fechaStr;
+                        });
+                        const tieneHorariosExistentes = horariosDelDia.length > 0;
+                        
                         const esHoy =
                           fecha.toDateString() === new Date().toDateString();
 
@@ -1240,8 +1386,12 @@ export default function AsignarHorarios() {
                             className={`aspect-square rounded-lg border p-2 relative ${
                               !esMesActual
                                 ? "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-40"
+                                : diaConfig?.tieneConflicto
+                                ? "bg-red-100 dark:bg-red-900/40 border-red-400 dark:border-red-600 shadow-sm"
                                 : tieneHorario
                                 ? "bg-blue-100 dark:bg-blue-900/40 border-blue-400 dark:border-blue-600 shadow-sm hover:shadow-md transition-shadow"
+                                : tieneHorariosExistentes
+                                ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
                                 : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                             } ${esHoy ? "ring-2 ring-blue-500" : ""}`}
                           >
@@ -1249,8 +1399,12 @@ export default function AsignarHorarios() {
                               className={`text-sm font-semibold ${
                                 esHoy
                                   ? "bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs"
+                                  : diaConfig?.tieneConflicto
+                                  ? "text-red-700 dark:text-red-300"
                                   : tieneHorario
                                   ? "text-blue-700 dark:text-blue-300"
+                                  : tieneHorariosExistentes
+                                  ? "text-amber-700 dark:text-amber-300"
                                   : esMesActual
                                   ? "text-gray-900 dark:text-white"
                                   : "text-gray-400"
@@ -1259,16 +1413,47 @@ export default function AsignarHorarios() {
                               {fecha.getDate()}
                             </div>
 
+                            {/* Indicador de conflicto */}
+                            {diaConfig?.tieneConflicto && esMesActual && (
+                              <div className="absolute top-1 right-1" title="Conflicto detectado">
+                                <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            )}
+
+                            {/* Horario planificado nuevo */}
                             {tieneHorario && diaConfig && esMesActual && (
                               <div className="mt-1">
-                                <div className="text-[10px] text-blue-700 dark:text-blue-300 font-medium leading-tight">
-                                  {diaConfig.config.hora_inicio}
+                                <div className="text-[10px] font-medium leading-tight flex items-center gap-1">
+                                  <span className={diaConfig.tieneConflicto ? "text-red-700 dark:text-red-300" : "text-blue-700 dark:text-blue-300"}>
+                                    {diaConfig.config.hora_inicio}
+                                  </span>
                                 </div>
-                                <div className="text-[10px] text-blue-600 dark:text-blue-400 leading-tight">
-                                  {diaConfig.config.hora_fin}
+                                <div className="text-[10px] leading-tight">
+                                  <span className={diaConfig.tieneConflicto ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"}>
+                                    {diaConfig.config.hora_fin}
+                                  </span>
                                 </div>
                                 <div className="text-[9px] text-gray-600 dark:text-gray-400 mt-0.5">
                                   {diaConfig.config.duracion_bloque_minutos}min
+                                </div>
+                                {diaConfig.tieneConflicto && (
+                                  <div className="text-[8px] text-red-700 dark:text-red-300 font-bold mt-0.5">
+                                    ⚠ {diaConfig.conflictos.length} conflicto(s)
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Horarios existentes (cuando no hay planificado) */}
+                            {!tieneHorario && tieneHorariosExistentes && esMesActual && (
+                              <div className="mt-1">
+                                <div className="text-[9px] text-amber-700 dark:text-amber-300 font-semibold">
+                                  ✓ Existente
+                                </div>
+                                <div className="text-[8px] text-amber-600 dark:text-amber-400">
+                                  {horariosDelDia.length} bloque(s)
                                 </div>
                               </div>
                             )}
@@ -1281,26 +1466,53 @@ export default function AsignarHorarios() {
 
                 {/* Leyenda */}
                 <div className="px-6 pb-6">
-                  <div className="flex items-center gap-4 text-xs">
+                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-3">Leyenda:</h4>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded bg-blue-100 dark:bg-blue-900/40 border-2 border-blue-400 dark:border-blue-600"></div>
                       <span className="text-gray-600 dark:text-gray-400">
-                        Con horario
+                        Nuevo horario (válido)
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700"></div>
+                      <div className="w-4 h-4 rounded bg-red-100 dark:bg-red-900/40 border-2 border-red-400 dark:border-red-600"></div>
                       <span className="text-gray-600 dark:text-gray-400">
-                        Sin horario
+                        Conflicto detectado
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-300 dark:border-amber-700"></div>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Horario existente
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded ring-2 ring-blue-500"></div>
                       <span className="text-gray-600 dark:text-gray-400">
-                        Hoy
+                        Día actual
                       </span>
                     </div>
                   </div>
+
+                  {/* Alerta de conflictos */}
+                  {diasConHorario.some(d => d.tieneConflicto) && (
+                    <div className="mt-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r-lg">
+                      <div className="flex items-start gap-3">
+                        <svg className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-bold text-red-800 dark:text-red-200">
+                            Conflictos detectados
+                          </h4>
+                          <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                            Hay {diasConHorario.filter(d => d.tieneConflicto).length} día(s) con solapamientos de horarios.
+                            El backend omitirá automáticamente los bloques conflictivos al crear.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1678,7 +1890,7 @@ export default function AsignarHorarios() {
                     </p>
                   </div>
 
-                  {loading ? (
+                  {loadingHorarios ? (
                     <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                       Cargando horarios...
                     </div>

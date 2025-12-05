@@ -284,45 +284,19 @@ export default function Recepcion() {
         )}
       </AnimatePresence>
 
-      <div className="space-y-6">
-        {/* Header Mejorado */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-8 text-white">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
-                <svg
-                  className="w-8 h-8"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold">Recepción de Pacientes</h1>
-                <p className="text-blue-100 mt-2 text-sm">
-                  Gestiona los pagos de las consultas médicas del día
-                </p>
-                <div className="flex items-center gap-2 mt-3">
-                  <div className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-lg">
-                    <span className="text-sm font-semibold">
-                      {citasFiltradas.length}
-                    </span>
-                    <span className="text-xs ml-1">citas pendientes</span>
-                  </div>
-                </div>
-              </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-green-50/30 to-gray-50 dark:from-gray-900 dark:via-green-950/20 dark:to-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">Recepción de Pacientes</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1 font-medium">
+                Gestiona los pagos de las consultas médicas del día
+              </p>
             </div>
-
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                   <svg
                     className="w-5 h-5"
                     fill="none"
@@ -341,12 +315,12 @@ export default function Recepcion() {
                   type="date"
                   value={fechaFiltro}
                   onChange={(e) => setFechaFiltro(e.target.value)}
-                  className="pl-12 pr-4 py-3 bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-xl focus:ring-2 focus:ring-white/50 text-white placeholder-blue-200 font-medium"
+                  className="pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-white font-medium"
                 />
               </div>
               <button
                 onClick={actualizarCitas}
-                className="px-6 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-semibold shadow-sm hover:shadow-md flex items-center justify-center gap-2"
               >
                 <svg
                   className="w-5 h-5"
@@ -365,11 +339,25 @@ export default function Recepcion() {
               </button>
             </div>
           </div>
-        </div>
+
+          {/* Stats Badge */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Citas Pendientes</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{citasFiltradas.length}</p>
+              </div>
+            </div>
+          </div>
 
         {/* Lista de citas mejorada */}
         {loading ? (
-          <div className="flex flex-col justify-center items-center h-64 bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
+          <div className="flex flex-col justify-center items-center h-64 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="relative">
               <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-500"></div>
               <div className="absolute inset-0 flex items-center justify-center">
@@ -393,8 +381,8 @@ export default function Recepcion() {
             </p>
           </div>
         ) : citasFiltradas.length === 0 ? (
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-2xl shadow-xl p-16 text-center border-2 border-dashed border-gray-300 dark:border-gray-600">
-            <div className="inline-flex p-5 bg-white dark:bg-gray-800 rounded-full shadow-lg mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-16 text-center">
+            <div className="inline-flex p-5 bg-gray-50 dark:bg-gray-700 rounded-full mb-6">
               <svg
                 className="w-16 h-16 text-gray-400"
                 fill="none"
@@ -417,24 +405,21 @@ export default function Recepcion() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5">
+          <div className="grid grid-cols-1 gap-4">
             {citasFiltradas.map((cita, index) => (
               <motion.div
                 key={cita.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl border-2 border-gray-100 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300 overflow-hidden"
+                className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-all duration-300 overflow-hidden"
               >
-                {/* Barra superior de color */}
-                <div className="h-1.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600"></div>
-
                 <div className="p-6">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
                     {/* Paciente */}
                     <div className="lg:col-span-3">
                       <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-xl group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors">
+                        <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
                           <svg
                             className="w-6 h-6 text-blue-600 dark:text-blue-400"
                             fill="none"
@@ -467,7 +452,7 @@ export default function Recepcion() {
                     {/* Doctor */}
                     <div className="lg:col-span-3">
                       <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/50 transition-colors">
+                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl">
                           <svg
                             className="w-6 h-6 text-emerald-600 dark:text-emerald-400"
                             fill="none"
@@ -497,7 +482,7 @@ export default function Recepcion() {
                     {/* Especialidad y Precio */}
                     <div className="lg:col-span-2">
                       <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-purple-50 dark:bg-purple-900/30 rounded-xl group-hover:bg-purple-100 dark:group-hover:bg-purple-900/50 transition-colors">
+                        <div className="p-2.5 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
                           <svg
                             className="w-6 h-6 text-purple-600 dark:text-purple-400"
                             fill="none"
@@ -549,7 +534,7 @@ export default function Recepcion() {
                     {/* Fecha y Hora */}
                     <div className="lg:col-span-2">
                       <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-amber-50 dark:bg-amber-900/30 rounded-xl group-hover:bg-amber-100 dark:group-hover:bg-amber-900/50 transition-colors">
+                        <div className="p-2.5 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
                           <svg
                             className="w-6 h-6 text-amber-600 dark:text-amber-400"
                             fill="none"
@@ -577,12 +562,12 @@ export default function Recepcion() {
 
                     {/* Acciones */}
                     <div className="lg:col-span-2 flex flex-col items-stretch lg:items-end gap-3">
-                      <span className="px-4 py-2 bg-gradient-to-r from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-800/20 text-amber-700 dark:text-amber-400 rounded-xl text-sm font-bold text-center shadow-sm border border-amber-200 dark:border-amber-700">
+                      <span className="px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl text-sm font-bold text-center border border-amber-200 dark:border-amber-700">
                         {cita.estado_actual}
                       </span>
                       <button
                         onClick={() => abrirModalPago(cita)}
-                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all font-bold shadow-sm hover:shadow-md flex items-center justify-center gap-2"
                       >
                         <svg
                           className="w-5 h-5"
@@ -606,6 +591,7 @@ export default function Recepcion() {
             ))}
           </div>
         )}
+        </div>
       </div>
 
       {/* Modal de pago mejorado */}

@@ -8,9 +8,11 @@ const API_URL = "http://localhost:5000";
 // Helper para parsear fechas UTC del backend correctamente
 const parseUTCDate = (dateString) => {
   if (!dateString) return null;
-  // Si ya termina en Z, usar directamente. Si no, agregarlo
-  const dateStr = dateString.endsWith("Z") ? dateString : dateString + "Z";
-  return new Date(dateStr);
+  // El backend envía formatos ISO válidos:
+  // - "2025-12-04T11:00:00Z" (UTC con Z)
+  // - "2025-12-04T11:00:00+00:00" (UTC con offset)
+  // JavaScript los parsea automáticamente sin modificación
+  return new Date(dateString);
 };
 
 export default function DashboardDoctor() {
@@ -309,21 +311,25 @@ export default function DashboardDoctor() {
                           HORARIO
                         </div>
                         <div className="text-white font-bold text-lg">
-                          {parseUTCDate(
-                            turnoHoy.turno_programado.inicio
-                          )?.toLocaleTimeString("es-CL", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }) || "---"}
+                          {turnoHoy?.turno_programado?.inicio
+                            ? parseUTCDate(
+                                turnoHoy.turno_programado.inicio
+                              ).toLocaleTimeString("es-CL", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "---"}
                         </div>
                         <div className="text-blue-100 text-sm">
                           -{" "}
-                          {parseUTCDate(
-                            turnoHoy.turno_programado.fin
-                          )?.toLocaleTimeString("es-CL", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }) || "---"}
+                          {turnoHoy?.turno_programado?.fin
+                            ? parseUTCDate(
+                                turnoHoy.turno_programado.fin
+                              ).toLocaleTimeString("es-CL", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "---"}
                         </div>
                       </div>
 
@@ -333,16 +339,16 @@ export default function DashboardDoctor() {
                           ENTRADA
                         </div>
                         <div className="text-white font-bold text-lg">
-                          {turnoHoy.asistencia.hora_entrada
+                          {turnoHoy?.asistencia?.hora_entrada
                             ? parseUTCDate(
                                 turnoHoy.asistencia.hora_entrada
-                              )?.toLocaleTimeString("es-CL", {
+                              ).toLocaleTimeString("es-CL", {
                                 hour: "2-digit",
                                 minute: "2-digit",
-                              }) || "---"
+                              })
                             : "---"}
                         </div>
-                        {turnoHoy.asistencia.minutos_atraso > 0 && (
+                        {turnoHoy?.asistencia?.minutos_atraso > 0 && (
                           <div className="text-amber-300 text-xs font-medium">
                             +{turnoHoy.asistencia.minutos_atraso} min
                           </div>
