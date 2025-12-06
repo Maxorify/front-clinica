@@ -1,20 +1,53 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { generarRecetaPDF } from "../../utils/generarRecetaPDF";
 
+const API_URL = "http://localhost:5000";
+
+// Funciones de fetch para React Query
+const fetchCitasDoctor = async (doctorId, fechaHoy) => {
+  const token = localStorage.getItem("access_token");
+  const response = await fetch(
+    `${API_URL}/Citas/doctor/${doctorId}/citas?fecha=${fechaHoy}&estados=Pendiente,Confirmada,En Consulta,Completada`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await response.json();
+  return data.citas || [];
+};
+
+const fetchDiagnosticos = async () => {
+  const response = await fetch(`${API_URL}/Citas/diagnosticos`);
+  const data = await response.json();
+  return data.diagnosticos || [];
+};
+
 export default function CitasDoctor() {
   const location = useLocation();
-  const [citas, setCitas] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [citaEnConsulta, setCitaEnConsulta] = useState(null);
   const [vistaAtencion, setVistaAtencion] = useState(false);
-  const [diagnosticos, setDiagnosticos] = useState([]);
   const [busquedaDiagnostico, setBusquedaDiagnostico] = useState("");
-  const [diagnosticosSeleccionados, setDiagnosticosSeleccionados] = useState(
-    []
-  );
+  const [diagnosticosSeleccionados, setDiagnosticosSeleccionados] = useState([]);
   const citaRefs = useRef({});
+  
+  const doctorId = localStorage.getItem("user_id");
+  const fechaHoy = new Date().toISOString().split("T")[0];
+
+  // React Query - Citas del doctor
+  const { data: citas = [], isLoading: loading } = useQuery({
+    queryKey: ['doctorCitasLista', doctorId, fechaHoy],
+    queryFn: () => fetchCitasDoctor(doctorId, fechaHoy),
+    staleTime: 1 * 60 * 1000,
+  });
+
+  // React Query - Diagnósticos
+  const { data: diagnosticos = [] } = useQuery({
+    queryKey: ['diagnosticos'],
+    queryFn: fetchDiagnosticos,
+    staleTime: 10 * 60 * 1000,
+  });
 
   // Estado para el formulario de consulta
   const [formularioConsulta, setFormularioConsulta] = useState({
@@ -42,11 +75,6 @@ export default function CitasDoctor() {
   const [consultasExpandidas, setConsultasExpandidas] = useState({});
 
   useEffect(() => {
-    cargarDatos();
-    cargarDiagnosticos();
-  }, []);
-
-  useEffect(() => {
     // Resaltar cita si viene desde el dashboard
     if (
       location.state?.highlightCitaId &&
@@ -68,91 +96,6 @@ export default function CitasDoctor() {
       }, 2000);
     }
   }, [location.state, citas]);
-
-  const cargarDatos = async () => {
-    try {
-      const doctorId = localStorage.getItem("user_id");
-      const token = localStorage.getItem("access_token");
-      const fechaHoy = new Date().toISOString().split("T")[0];
-
-      console.log("🔍 DEBUG - Doctor ID:", doctorId);
-      console.log("🔍 DEBUG - Fecha Hoy:", fechaHoy);
-      console.log("🔍 DEBUG - Token:", token ? "Presente" : "Ausente");
-
-      // Verificar si hay cita en consulta
-      const enConsultaResponse = await fetch(
-        `http://localhost:5000/Citas/doctor/${doctorId}/cita-en-consulta`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const enConsultaData = await enConsultaResponse.json();
-      console.log("🔍 DEBUG - Cita en consulta:", enConsultaData);
-
-      if (enConsultaData.cita_en_consulta) {
-        // Cargar detalle completo de la cita en consulta
-        const detalleResponse = await fetch(
-          `http://localhost:5000/Citas/cita/${enConsultaData.cita_en_consulta}/detalle-completo`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        const detalleData = await detalleResponse.json();
-        setCitaEnConsulta(detalleData);
-        setVistaAtencion(true);
-
-        // Cargar historial médico del paciente
-        if (detalleData.cita?.paciente?.id) {
-          await cargarHistorialMedico(detalleData.cita.paciente.id);
-        }
-
-        // Cargar información de consulta si existe
-        if (detalleData.informacion_consulta) {
-          const diagnosticoIds = detalleData.informacion_consulta.diagnostico_id
-            ? [detalleData.informacion_consulta.diagnostico_id]
-            : [];
-
-          setFormularioConsulta({
-            motivo_consulta:
-              detalleData.informacion_consulta.motivo_consulta || "",
-            antecedentes: detalleData.informacion_consulta.antecedentes || "",
-            dolores_sintomas:
-              detalleData.informacion_consulta.dolores_sintomas || "",
-            atenciones_quirurgicas:
-              detalleData.informacion_consulta.atenciones_quirurgicas || "",
-            evaluacion_doctor:
-              detalleData.informacion_consulta.evaluacion_doctor || "",
-            tratamiento: detalleData.informacion_consulta.tratamiento || "",
-            diagnostico_ids: diagnosticoIds,
-            recetas: detalleData.recetas || [],
-          });
-
-          setDiagnosticosSeleccionados(diagnosticoIds);
-        }
-      } else {
-        // Cargar TODAS las citas del día (incluye Pendiente para mostrar las no pagadas)
-        console.log("🔍 DEBUG - Buscando todas las citas del día...");
-        const citasResponse = await fetch(
-          `http://localhost:5000/Citas/doctor/${doctorId}/citas?fecha=${fechaHoy}&estados=Pendiente,Confirmada,Completada,Cancelada`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        const citasData = await citasResponse.json();
-        console.log("🔍 DEBUG - Respuesta citas:", citasData);
-        console.log(
-          "🔍 DEBUG - Cantidad de citas:",
-          citasData.citas?.length || 0
-        );
-        setCitas(citasData.citas || []);
-        setVistaAtencion(false);
-      }
-    } catch (error) {
-      console.error("❌ Error al cargar datos:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const cargarDiagnosticos = async () => {
     try {
@@ -234,12 +177,19 @@ export default function CitasDoctor() {
       .includes(busquedaDiagnostico.toLowerCase())
   );
 
-  const iniciarConsulta = async (citaId) => {
+  const iniciarConsulta = async (cita) => {
     try {
       const token = localStorage.getItem("access_token");
 
-      // Cambiar estado a "En Consulta"
-      await fetch(`http://localhost:5000/Citas/cita/${citaId}/cambiar-estado`, {
+      // Setear inmediatamente la cita y abrir vista
+      setCitaEnConsulta({
+        cita: cita,
+        paciente: cita.paciente
+      });
+      setVistaAtencion(true);
+
+      // Cambiar estado a "En Consulta" en background
+      await fetch(`http://localhost:5000/Citas/cita/${cita.id}/cambiar-estado`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -249,7 +199,7 @@ export default function CitasDoctor() {
       });
 
       // Recargar datos
-      await cargarDatos();
+      queryClient.invalidateQueries({ queryKey: ['doctorCitasLista'] });
     } catch (error) {
       console.error("Error al iniciar consulta:", error);
       alert("Error al iniciar la consulta");
@@ -333,8 +283,8 @@ export default function CitasDoctor() {
         recetas: [],
       });
 
-      // Recargar citas
-      await cargarDatos();
+      // Recargar citas INMEDIATAMENTE (refetch fuerza recarga, no usa cache)
+      await queryClient.refetchQueries({ queryKey: ['doctorCitasLista'] });
     } catch (error) {
       console.error("Error al finalizar consulta:", error);
       alert("Error al finalizar la consulta");
@@ -1430,7 +1380,8 @@ export default function CitasDoctor() {
             {citas.filter(
               (c) =>
                 c.estado_actual === "Pendiente" ||
-                c.estado_actual === "Confirmada"
+                c.estado_actual === "Confirmada" ||
+                c.estado_actual === "En Consulta"
             ).length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -1463,7 +1414,8 @@ export default function CitasDoctor() {
                           citas.filter(
                             (c) =>
                               c.estado_actual === "Pendiente" ||
-                              c.estado_actual === "Confirmada"
+                              c.estado_actual === "Confirmada" ||
+                              c.estado_actual === "En Consulta"
                           ).length
                         }{" "}
                         paciente(s) esperando atención
@@ -1477,7 +1429,8 @@ export default function CitasDoctor() {
                     .filter(
                       (c) =>
                         c.estado_actual === "Pendiente" ||
-                        c.estado_actual === "Confirmada"
+                        c.estado_actual === "Confirmada" ||
+                        c.estado_actual === "En Consulta"
                     )
                     .map((cita, index) => (
                       <motion.div
@@ -1588,7 +1541,7 @@ export default function CitasDoctor() {
                                 <motion.button
                                   whileHover={{ scale: 1.02 }}
                                   whileTap={{ scale: 0.98 }}
-                                  onClick={() => iniciarConsulta(cita.id)}
+                                  onClick={() => iniciarConsulta(cita)}
                                   className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2"
                                 >
                                   <svg
@@ -1611,6 +1564,35 @@ export default function CitasDoctor() {
                                     />
                                   </svg>
                                   Iniciar Consulta
+                                </motion.button>
+                              )}
+                              {cita.estado_actual === "En Consulta" && (
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => {
+                                    setCitaEnConsulta({
+                                      cita: cita,
+                                      paciente: cita.paciente
+                                    });
+                                    setVistaAtencion(true);
+                                  }}
+                                  className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                                >
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                  </svg>
+                                  Continuar Consulta
                                 </motion.button>
                               )}
                             </div>

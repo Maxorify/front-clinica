@@ -1,25 +1,71 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:5000';
 
+// Helper para obtener fecha actual
+const getFechaHoy = () => {
+  const hoy = new Date();
+  const año = hoy.getFullYear();
+  const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+  const dia = String(hoy.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+};
+
+// Funciones de fetch para React Query
+const fetchEstadisticas = async (fecha) => {
+  const { data } = await axios.get(`${API_URL}/Citas/estadisticas`, { params: { fecha } });
+  return data;
+};
+
+const fetchCitasPendientes = async () => {
+  const { data } = await axios.get(`${API_URL}/Citas/hoy/pendientes`);
+  return data.citas || [];
+};
+
+const fetchActividadReciente = async () => {
+  const { data } = await axios.get(`${API_URL}/Citas/actividad-reciente`);
+  return data;
+};
+
+const fetchIngresos = async (fecha) => {
+  const { data } = await axios.get(`${API_URL}/Citas/ingresos`, { params: { fecha } });
+  return data;
+};
+
 export default function DashboardSecretaria() {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }));
-  const [estadisticas, setEstadisticas] = useState({
-    total_citas: 0,
-    confirmadas: 0,
-    pendientes: 0,
-    en_consulta: 0,
-    total_ingresos: 0
+  const fechaHoy = getFechaHoy();
+
+  // React Query - Caché automático y deduplicación
+  const { data: estadisticas, isLoading: loadingEstadisticas } = useQuery({
+    queryKey: ['estadisticas', fechaHoy],
+    queryFn: () => fetchEstadisticas(fechaHoy),
+    staleTime: 2 * 60 * 1000, // 2 minutos
   });
-  const [citasPendientes, setCitasPendientes] = useState([]);
-  const [actividadReciente, setActividadReciente] = useState({
-    pagos_recientes: [],
-    citas_recientes: []
+
+  const { data: citasPendientes = [], isLoading: loadingPendientes } = useQuery({
+    queryKey: ['citasPendientes'],
+    queryFn: fetchCitasPendientes,
+    staleTime: 1 * 60 * 1000, // 1 minuto
   });
-  const [loading, setLoading] = useState(false);
+
+  const { data: actividadReciente, isLoading: loadingActividad } = useQuery({
+    queryKey: ['actividadReciente'],
+    queryFn: fetchActividadReciente,
+    staleTime: 2 * 60 * 1000, // 2 minutos
+  });
+
+  const { data: ingresos, isLoading: loadingIngresos } = useQuery({
+    queryKey: ['ingresos', fechaHoy],
+    queryFn: () => fetchIngresos(fechaHoy),
+    staleTime: 2 * 60 * 1000, // 2 minutos
+  });
+
+  const loading = loadingEstadisticas || loadingPendientes || loadingActividad || loadingIngresos;
 
   // Actualizar reloj cada minuto
   useEffect(() => {
@@ -28,57 +74,6 @@ export default function DashboardSecretaria() {
     }, 60000);
     return () => clearInterval(interval);
   }, []);
-
-  // Cargar datos al montar el componente
-  useEffect(() => {
-    const abortController = new AbortController();
-    cargarDatos(abortController.signal);
-
-    // Cleanup: cancelar peticiones pendientes cuando se desmonte el componente
-    return () => {
-      abortController.abort();
-    };
-  }, []);
-
-  const cargarDatos = async (signal) => {
-    setLoading(true);
-    try {
-      // Obtener fecha local en formato YYYY-MM-DD (NO usar UTC)
-      const hoy = new Date();
-      const año = hoy.getFullYear();
-      const mes = String(hoy.getMonth() + 1).padStart(2, '0');
-      const dia = String(hoy.getDate()).padStart(2, '0');
-      const fechaHoy = `${año}-${mes}-${dia}`;
-
-      // Llamadas en paralelo
-      const [estadisticasRes, citasPendientesRes, actividadRes, ingresosRes] = await Promise.all([
-        axios.get(`${API_URL}/Citas/estadisticas`, { params: { fecha: fechaHoy }, signal }),
-        axios.get(`${API_URL}/Citas/hoy/pendientes`, { signal }),
-        axios.get(`${API_URL}/Citas/actividad-reciente`, { signal }),
-        axios.get(`${API_URL}/Citas/ingresos`, { params: { fecha: fechaHoy }, signal })
-      ]);
-
-      setEstadisticas({
-        total_citas: estadisticasRes.data.total || 0,
-        confirmadas: estadisticasRes.data.confirmadas || 0,
-        pendientes: estadisticasRes.data.pendientes || 0,
-        en_consulta: estadisticasRes.data.en_consulta || 0,
-        total_ingresos: ingresosRes.data.total_ingresos || 0
-      });
-
-      setCitasPendientes(citasPendientesRes.data.citas || []);
-      setActividadReciente(actividadRes.data || { pagos_recientes: [], citas_recientes: [] });
-
-    } catch (error) {
-      if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
-        console.log('Petición cancelada correctamente');
-        return;
-      }
-      console.error('Error al cargar datos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCitaClick = (citaId) => {
     navigate(`/secretaria/recepcion?citaId=${citaId}`);
@@ -193,7 +188,7 @@ export default function DashboardSecretaria() {
                 📅
               </div>
             </div>
-            <div className="text-4xl font-bold text-blue-600 dark:text-white mb-1">{loading ? '...' : estadisticas.total_citas}</div>
+            <div className="text-4xl font-bold text-blue-600 dark:text-white mb-1">{loading ? '...' : (estadisticas?.total || 0)}</div>
             <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Citas Hoy</div>
           </div>
 
@@ -203,7 +198,7 @@ export default function DashboardSecretaria() {
                 ✓
               </div>
             </div>
-            <div className="text-4xl font-bold text-green-600 dark:text-white mb-1">{loading ? '...' : estadisticas.confirmadas}</div>
+            <div className="text-4xl font-bold text-green-600 dark:text-white mb-1">{loading ? '...' : (estadisticas?.confirmadas || 0)}</div>
             <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Confirmadas</div>
           </div>
 
@@ -213,7 +208,7 @@ export default function DashboardSecretaria() {
                 ⏱
               </div>
             </div>
-            <div className="text-4xl font-bold text-amber-600 dark:text-white mb-1">{loading ? '...' : estadisticas.pendientes}</div>
+            <div className="text-4xl font-bold text-amber-600 dark:text-white mb-1">{loading ? '...' : (estadisticas?.pendientes || 0)}</div>
             <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Pendientes</div>
           </div>
 
@@ -224,7 +219,7 @@ export default function DashboardSecretaria() {
               </div>
             </div>
             <div className="text-4xl font-bold text-purple-600 dark:text-white mb-1">
-              {loading ? '...' : `$${new Intl.NumberFormat('es-CL').format(estadisticas.total_ingresos)}`}
+              {loading ? '...' : `$${new Intl.NumberFormat('es-CL').format(ingresos?.total_ingresos || 0)}`}
             </div>
             <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Ingresos Hoy</div>
           </div>
@@ -311,7 +306,7 @@ export default function DashboardSecretaria() {
               <div className="space-y-6 max-h-[600px] overflow-y-auto">
 
                 {/* Pagos Recientes */}
-                {actividadReciente.pagos_recientes?.length > 0 && (
+                {actividadReciente?.pagos_recientes?.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                       <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,7 +333,7 @@ export default function DashboardSecretaria() {
                 )}
 
                 {/* Citas Recientes */}
-                {actividadReciente.citas_recientes?.length > 0 && (
+                {actividadReciente?.citas_recientes?.length > 0 && (
                   <div>
                     <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                       <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -347,7 +342,7 @@ export default function DashboardSecretaria() {
                       Últimas Citas
                     </h3>
                     <div className="space-y-2">
-                      {actividadReciente.citas_recientes.slice(0, 5).map((cita) => (
+                      {actividadReciente?.citas_recientes?.slice(0, 5).map((cita) => (
                         <div key={cita.id} className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-sm font-medium text-gray-900 dark:text-white">
@@ -366,7 +361,7 @@ export default function DashboardSecretaria() {
                   </div>
                 )}
 
-                {actividadReciente.pagos_recientes?.length === 0 && actividadReciente.citas_recientes?.length === 0 && (
+                {actividadReciente?.pagos_recientes?.length === 0 && actividadReciente?.citas_recientes?.length === 0 && (
                   <div className="text-center py-12">
                     <svg className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

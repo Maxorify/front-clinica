@@ -1,23 +1,54 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { generarRecetaPDF } from "../../utils/generarRecetaPDF";
+
+const API_URL = "http://localhost:5000";
+
+// Funciones de fetch para React Query
+const fetchPacientesAtendidos = async (doctorId) => {
+  const token = localStorage.getItem("access_token");
+  const response = await axios.get(
+    `${API_URL}/Citas/doctor/${doctorId}/pacientes-atendidos`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data.pacientes || [];
+};
+
+const fetchHistorialPaciente = async (pacienteId) => {
+  const token = localStorage.getItem("access_token");
+  const response = await axios.get(
+    `${API_URL}/Citas/paciente/${pacienteId}/historial-medico`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data.historial || [];
+};
 
 export default function HistoriaMedica() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPaciente, setSelectedPaciente] = useState(null);
   const [selectedConsulta, setSelectedConsulta] = useState(null);
   const [showConsultaDetalle, setShowConsultaDetalle] = useState(false);
-
-  // Estados para los datos del backend
-  const [pacientes, setPacientes] = useState([]);
-  const [historialConsultas, setHistorialConsultas] = useState([]);
-  const [loadingPacientes, setLoadingPacientes] = useState(true);
-  const [loadingHistorial, setLoadingHistorial] = useState(false);
-
-  // Paginación
   const [paginaActual, setPaginaActual] = useState(1);
   const pacientesPorPagina = 6;
+  
+  const doctorId = localStorage.getItem("user_id");
+
+  // React Query - Pacientes atendidos
+  const { data: pacientes = [], isLoading: loadingPacientes } = useQuery({
+    queryKey: ['pacientesAtendidos', doctorId],
+    queryFn: () => fetchPacientesAtendidos(doctorId),
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
+
+  // React Query - Historial del paciente seleccionado
+  const { data: historialConsultas = [], isLoading: loadingHistorial } = useQuery({
+    queryKey: ['historialPaciente', selectedPaciente?.id],
+    queryFn: () => fetchHistorialPaciente(selectedPaciente.id),
+    enabled: !!selectedPaciente, // Solo ejecutar si hay paciente seleccionado
+    staleTime: 2 * 60 * 1000, // 2 minutos
+  });
 
   // Notificaciones
   const [notificacion, setNotificacion] = useState({
@@ -26,56 +57,9 @@ export default function HistoriaMedica() {
     tipo: "",
   });
 
-  // Cargar pacientes atendidos por el doctor al montar el componente
-  useEffect(() => {
-    cargarPacientesAtendidos();
-  }, []);
-
-  const cargarPacientesAtendidos = async () => {
-    setLoadingPacientes(true);
-    try {
-      const doctorId = localStorage.getItem("user_id");
-      const token = localStorage.getItem("access_token");
-
-      const response = await axios.get(
-        `http://localhost:5000/Citas/doctor/${doctorId}/pacientes-atendidos`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setPacientes(response.data.pacientes || []);
-    } catch (error) {
-      console.error("Error al cargar pacientes atendidos:", error);
-      mostrarNotificacion("Error al cargar la lista de pacientes", "error");
-      setPacientes([]);
-    } finally {
-      setLoadingPacientes(false);
-    }
-  };
-
-  const cargarHistorialPaciente = async (pacienteId) => {
-    setLoadingHistorial(true);
-    try {
-      const token = localStorage.getItem("access_token");
-
-      const response = await axios.get(
-        `http://localhost:5000/Citas/paciente/${pacienteId}/historial-medico`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setHistorialConsultas(response.data.historial || []);
-    } catch (error) {
-      console.error("Error al cargar historial médico:", error);
-      mostrarNotificacion("Error al cargar el historial médico", "error");
-      setHistorialConsultas([]);
-    } finally {
-      setLoadingHistorial(false);
-    }
-  };
-
   const handleSeleccionarPaciente = (paciente) => {
     setSelectedPaciente(paciente);
     setPaginaActual(1);
-    cargarHistorialPaciente(paciente.id);
   };
 
   const handleVerConsulta = (consulta) => {

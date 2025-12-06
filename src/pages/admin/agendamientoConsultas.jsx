@@ -247,7 +247,10 @@ export default function AgendamientoConsultas() {
         hora: "08:00",
         motivo_consulta: "",
       });
-      queryClient.invalidateQueries(["citas"]);
+      // Invalidar TODAS las queries de citas para que se actualicen todas las vistas
+      await queryClient.invalidateQueries({ queryKey: ["citas"] });
+      await queryClient.invalidateQueries({ queryKey: ["citasPendientes"] });
+      await queryClient.invalidateQueries({ queryKey: ["estadisticas"] });
       mostrarNotificacion("Cita creada exitosamente", "success");
     } catch (err) {
       console.error("Error al crear cita:", err);

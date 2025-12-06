@@ -1,14 +1,24 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { generarBoletaPDF } from "../../utils/generarBoletaPDF";
 
 const API_URL = "http://localhost:5000";
 
+// Función de fetch para React Query
+const fetchCitas = async (fechaFiltro) => {
+  const { data } = await axios.get(`${API_URL}/Citas/listar-citas`, {
+    params: {
+      fecha: fechaFiltro,
+      estado: "Pendiente",
+    },
+  });
+  return data.citas || [];
+};
+
 export default function Recepcion() {
-  const [citas, setCitas] = useState([]);
-  const [citasFiltradas, setCitasFiltradas] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [fechaFiltro, setFechaFiltro] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -25,15 +35,18 @@ export default function Recepcion() {
     habilitar_descuento: false,
   });
 
-  useEffect(() => {
-    const abortController = new AbortController();
-    cargarCitas(abortController.signal);
+  // React Query - Caché inteligente
+  const { data: citas = [], isLoading: loading } = useQuery({
+    queryKey: ['citas', fechaFiltro],
+    queryFn: () => fetchCitas(fechaFiltro),
+    staleTime: 30 * 1000, // 30 segundos
+  });
 
-    // Cleanup: cancelar peticiones pendientes cuando cambie la fecha o se desmonte
-    return () => {
-      abortController.abort();
-    };
-  }, [fechaFiltro]);
+  const [citasFiltradas, setCitasFiltradas] = useState([]);
+
+  useEffect(() => {
+    setCitasFiltradas(citas);
+  }, [citas]);
 
   useEffect(() => {
     if (!notification) return;
@@ -45,37 +58,9 @@ export default function Recepcion() {
     setNotification({ id: Date.now(), type, message });
   };
 
-  const cargarCitas = async (signal) => {
-    setLoading(true);
-    try {
-      const response = await axios.get(`${API_URL}/Citas/listar-citas`, {
-        params: {
-          fecha: fechaFiltro,
-          estado: "Pendiente",
-        },
-        signal,
-      });
-
-      setCitas(response.data.citas || []);
-      setCitasFiltradas(response.data.citas || []);
-    } catch (error) {
-      // Ignorar errores de cancelación
-      if (error.name === "CanceledError" || error.code === "ERR_CANCELED") {
-        console.log("Petición cancelada correctamente");
-        return;
-      }
-      console.error("Error al cargar citas:", error);
-      showNotification("error", "Error al cargar las citas");
-      setCitas([]);
-      setCitasFiltradas([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const actualizarCitas = () => {
-    const abortController = new AbortController();
-    cargarCitas(abortController.signal);
+  const actualizarCitas = async () => {
+    // Refetch fuerza recarga inmediata sin usar cache
+    await queryClient.refetchQueries({ queryKey: ['citas', fechaFiltro] });
   };
 
   const abrirModalPago = async (cita) => {
@@ -167,8 +152,8 @@ export default function Recepcion() {
         cita: citaSeleccionada,
       });
 
-      // Recargar citas
-      actualizarCitas();
+      // Recargar citas y esperar a que termine
+      await actualizarCitas();
       cerrarModalPago();
     } catch (error) {
       console.error("Error al procesar pago:", error);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -8,94 +9,82 @@ const API_URL = "http://localhost:5000";
 // Helper para parsear fechas UTC del backend correctamente
 const parseUTCDate = (dateString) => {
   if (!dateString) return null;
-  // El backend envía formatos ISO válidos:
-  // - "2025-12-04T11:00:00Z" (UTC con Z)
-  // - "2025-12-04T11:00:00+00:00" (UTC con offset)
-  // JavaScript los parsea automáticamente sin modificación
   return new Date(dateString);
+};
+
+// Funciones de fetch para React Query
+const fetchDoctorStats = async (doctorId, fecha) => {
+  const token = localStorage.getItem("access_token");
+  const response = await fetch(
+    `${API_URL}/Citas/doctor/${doctorId}/stats?fecha=${fecha}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.json();
+};
+
+const fetchDoctorCitas = async (doctorId, fecha) => {
+  const token = localStorage.getItem("access_token");
+  const response = await fetch(
+    `${API_URL}/Citas/doctor/${doctorId}/citas?fecha=${fecha}&estados=Pendiente,Confirmada,En Consulta,Completada`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await response.json();
+  return data.citas || [];
+};
+
+const fetchTurnoHoy = async (doctorId) => {
+  const response = await axios.get(
+    `${API_URL}/asistencia/doctor/mi-turno-hoy?usuario_id=${doctorId}`
+  );
+  const data = response.data;
+  if (data.tiene_turno) {
+    const ahora = new Date();
+    const finTurno = parseUTCDate(data.turno_programado.fin);
+    const inicioTurno = parseUTCDate(data.turno_programado.inicio);
+    data.fuera_de_horario = ahora > finTurno;
+    data.esta_atrasado = ahora > inicioTurno && !data.asistencia.tiene_entrada;
+  }
+  return data;
 };
 
 export default function DashboardDoctor() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    citas_hoy: 0,
-    atendidos_hoy: 0,
-    pendientes_hoy: 0,
-    cancelados_hoy: 0,
-    total_pacientes_mes: 0,
-  });
-  const [citasHoy, setCitasHoy] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [turnoHoy, setTurnoHoy] = useState(null);
+  const queryClient = useQueryClient();
   const [loadingAsistencia, setLoadingAsistencia] = useState(false);
   const [notification, setNotification] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  const doctorId = localStorage.getItem("user_id");
+  const fechaHoy = new Date().toISOString().split("T")[0];
+
+  // React Query - Estadísticas del doctor
+  const { data: stats = { citas_hoy: 0, atendidos_hoy: 0, pendientes_hoy: 0, cancelados_hoy: 0, total_pacientes_mes: 0 }, isLoading: loadingStats } = useQuery({
+    queryKey: ['doctorStats', doctorId, fechaHoy],
+    queryFn: () => fetchDoctorStats(doctorId, fechaHoy),
+    staleTime: 2 * 60 * 1000, // 2 minutos
+  });
+
+  // React Query - Citas del día
+  const { data: citasHoy = [], isLoading: loadingCitas } = useQuery({
+    queryKey: ['doctorCitas', doctorId, fechaHoy],
+    queryFn: () => fetchDoctorCitas(doctorId, fechaHoy),
+    staleTime: 1 * 60 * 1000, // 1 minuto
+  });
+
+  // React Query - Turno del día
+  const { data: turnoHoy = { tiene_turno: false }, refetch: refetchTurno } = useQuery({
+    queryKey: ['turnoHoy', doctorId],
+    queryFn: () => fetchTurnoHoy(doctorId),
+    staleTime: 30 * 1000, // 30 segundos
+    refetchInterval: 30 * 1000, // Auto-refetch cada 30 segundos
+  });
+
+  const loading = loadingStats || loadingCitas;
 
   useEffect(() => {
-    cargarDatos();
-    cargarTurnoHoy();
-
-    const turnoInterval = setInterval(cargarTurnoHoy, 30000);
     const clockInterval = setInterval(() => setCurrentTime(new Date()), 1000);
-
-    return () => {
-      clearInterval(turnoInterval);
-      clearInterval(clockInterval);
-    };
+    return () => clearInterval(clockInterval);
   }, []);
-
-  const cargarDatos = async () => {
-    try {
-      const doctorId = localStorage.getItem("user_id");
-      const token = localStorage.getItem("access_token");
-      const fechaHoy = new Date().toISOString().split("T")[0];
-
-      const statsResponse = await fetch(
-        `${API_URL}/Citas/doctor/${doctorId}/stats?fecha=${fechaHoy}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const statsData = await statsResponse.json();
-      setStats(statsData);
-
-      const citasResponse = await fetch(
-        `${API_URL}/Citas/doctor/${doctorId}/citas?fecha=${fechaHoy}&estados=Pendiente,Confirmada,En Consulta,Completada`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const citasData = await citasResponse.json();
-      setCitasHoy(citasData.citas || []);
-    } catch (error) {
-      console.error("Error al cargar datos:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cargarTurnoHoy = async () => {
-    try {
-      const doctorId = localStorage.getItem("user_id");
-      const response = await axios.get(
-        `${API_URL}/asistencia/doctor/mi-turno-hoy?usuario_id=${doctorId}`
-      );
-
-      // Calcular si está fuera de horario
-      const data = response.data;
-      if (data.tiene_turno) {
-        const ahora = new Date();
-        // Convertir fechas UTC del backend a hora local
-        const finTurno = parseUTCDate(data.turno_programado.fin);
-        const inicioTurno = parseUTCDate(data.turno_programado.inicio);
-
-        data.fuera_de_horario = ahora > finTurno;
-        data.esta_atrasado =
-          ahora > inicioTurno && !data.asistencia.tiene_entrada;
-      }
-
-      setTurnoHoy(data);
-    } catch (error) {
-      console.error("Error al cargar turno:", error);
-      setTurnoHoy({ tiene_turno: false });
-    }
-  };
 
   const marcarEntrada = async () => {
     // Validar si está fuera de horario
@@ -120,7 +109,8 @@ export default function DashboardDoctor() {
         showNotification("success", "✓ Entrada registrada exitosamente");
       }
 
-      await cargarTurnoHoy();
+      // Invalidar caché para refrescar turno
+      queryClient.invalidateQueries({ queryKey: ['turnoHoy', doctorId] });
     } catch (error) {
       showNotification(
         "error",
@@ -139,11 +129,13 @@ export default function DashboardDoctor() {
       const response = await axios.post(
         `${API_URL}/asistencia/doctor/marcar-salida?usuario_id=${doctorId}`
       );
+      
+      // Invalidar caché para refrescar turno
+      queryClient.invalidateQueries({ queryKey: ['turnoHoy', doctorId] });
       showNotification(
         "success",
         `✓ Turno finalizado • ${response.data.horas_trabajadas}h trabajadas`
       );
-      await cargarTurnoHoy();
     } catch (error) {
       showNotification(
         "error",

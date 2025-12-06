@@ -244,7 +244,7 @@ export default function AjustesSistema() {
 
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 dark:from-gray-900 dark:via-blue-950/20 dark:to-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Header */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -264,9 +264,14 @@ export default function AjustesSistema() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 lg:p-8"
+              className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8"
             >
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Información Personal</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Información Personal
+              </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Nombre */}
@@ -424,7 +429,7 @@ export default function AjustesSistema() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="flex justify-end gap-4"
+                className="flex flex-col sm:flex-row justify-end gap-4"
               >
                 <motion.button
                   whileHover={{ scale: 1.02 }}

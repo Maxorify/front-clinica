@@ -291,220 +291,251 @@ export default function EditarPerfil() {
         )}
       </AnimatePresence>
 
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Mi Perfil</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">Gestiona tu información personal</p>
-          </div>
-          {!isEditing && (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors font-semibold flex items-center gap-2"
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-amber-50/30 to-gray-50 dark:from-gray-900 dark:via-amber-950/20 dark:to-gray-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="space-y-6">
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Editar Perfil
-            </button>
-          )}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Profile Header Card */}
-          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl shadow-lg p-8 text-white">
-            <div className="flex items-center gap-6">
-              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-amber-600 text-4xl font-bold shadow-lg">
-                {getIniciales()}
+              <div className="flex flex-col gap-2">
+                <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                  Mi Perfil
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 font-medium">
+                  Gestiona tu información personal y preferencias
+                </p>
               </div>
-              <div className="flex-1">
-                <h2 className="text-3xl font-bold">{getNombreCompleto()}</h2>
-                <p className="text-amber-100 text-lg mt-1">{profileData.rol_nombre}</p>
-                <div className="flex items-center gap-4 mt-3">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span>{profileData.email}</span>
+              {!isEditing && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setIsEditing(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl transition-all shadow-lg hover:shadow-xl font-bold flex items-center gap-2 self-start sm:self-center"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Editar Perfil
+                </motion.button>
+              )}
+            </motion.div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Profile Header Card */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8"
+              >
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center text-white text-3xl sm:text-4xl font-bold shadow-lg ring-4 ring-amber-100 dark:ring-amber-900/50">
+                    {getIniciales()}
                   </div>
-                  {profileData.celular && (
-                    <div className="flex items-center gap-2">
+                  <div className="flex-1 text-center sm:text-left">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{getNombreCompleto()}</h2>
+                  <p className="text-amber-600 dark:text-amber-400 text-lg mt-1 font-medium">{profileData.rol_nombre}</p>
+                  <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mt-4">
+                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      <span>{profileData.celular}</span>
+                      <span className="text-sm">{profileData.email}</span>
                     </div>
-                  )}
+                    {profileData.celular && (
+                      <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <span className="text-sm">{profileData.celular}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+              </motion.div>
+
+              {/* Personal Information */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8"
+              >
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Información Personal
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Nombre <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="nombre"
+                      value={profileData.nombre}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      required
+                      className={`w-full px-4 py-3 border rounded-xl text-gray-900 dark:text-white transition-all ${
+                        isEditing
+                          ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
+                          : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                      }`}
+                      placeholder="Ingrese su nombre"
+                    />
+              </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Apellido Paterno <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="apellido_paterno"
+                      value={profileData.apellido_paterno}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className={`w-full px-4 py-3 border rounded-xl text-gray-900 dark:text-white transition-all ${
+                        isEditing
+                          ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
+                          : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                      }`}
+                      placeholder="Ingrese apellido paterno"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Apellido Materno <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="apellido_materno"
+                      value={profileData.apellido_materno}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className={`w-full px-4 py-3 border rounded-xl text-gray-900 dark:text-white transition-all ${
+                        isEditing
+                          ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
+                          : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                      }`}
+                      placeholder="Ingrese apellido materno"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      RUT <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="rut"
+                      value={profileData.rut}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className={`w-full px-4 py-3 border rounded-xl text-gray-900 dark:text-white transition-all ${
+                        isEditing
+                          ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
+                          : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                      }`}
+                      placeholder="Ej: 12.345.678-9"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Email <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={profileData.email}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      required
+                      className={`w-full px-4 py-3 border rounded-xl text-gray-900 dark:text-white transition-all ${
+                        isEditing
+                          ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
+                          : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                      }`}
+                      placeholder="correo@ejemplo.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Teléfono <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      name="celular"
+                      value={profileData.celular}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className={`w-full px-4 py-3 border rounded-xl text-gray-900 dark:text-white transition-all ${
+                        isEditing
+                          ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
+                          : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                      }`}
+                      placeholder="+56 9 1234 5678"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Teléfono Secundario (Opcional)
+                    </label>
+                    <input
+                      type="tel"
+                      name="cel_secundario"
+                      value={profileData.cel_secundario}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className={`w-full px-4 py-3 border rounded-xl text-gray-900 dark:text-white transition-all ${
+                        isEditing
+                          ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
+                          : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                      }`}
+                      placeholder="+56 9 8765 4321"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Dirección <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      name="direccion"
+                      value={profileData.direccion}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      rows={3}
+                      className={`w-full px-4 py-3 border rounded-xl text-gray-900 dark:text-white transition-all resize-none ${
+                        isEditing
+                          ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
+                          : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
+                      }`}
+                      placeholder="Ingrese su dirección completa"
+                    />
+                  </div>
             </div>
-          </div>
-
-          {/* Personal Information */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-              <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              Información Personal
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Nombre *
-                </label>
-                <input
-                  type="text"
-                  name="nombre"
-                  value={profileData.nombre}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg text-gray-900 dark:text-white ${
-                    isEditing
-                      ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
-                      : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Apellido Paterno
-                </label>
-                <input
-                  type="text"
-                  name="apellido_paterno"
-                  value={profileData.apellido_paterno}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={`w-full px-4 py-3 border rounded-lg text-gray-900 dark:text-white ${
-                    isEditing
-                      ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
-                      : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Apellido Materno
-                </label>
-                <input
-                  type="text"
-                  name="apellido_materno"
-                  value={profileData.apellido_materno}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={`w-full px-4 py-3 border rounded-lg text-gray-900 dark:text-white ${
-                    isEditing
-                      ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
-                      : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  RUT
-                </label>
-                <input
-                  type="text"
-                  name="rut"
-                  value={profileData.rut}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={`w-full px-4 py-3 border rounded-lg text-gray-900 dark:text-white ${
-                    isEditing
-                      ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
-                      : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
-                  }`}
-                  placeholder="12.345.678-9"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={profileData.email}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg text-gray-900 dark:text-white ${
-                    isEditing
-                      ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
-                      : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Teléfono
-                </label>
-                <input
-                  type="tel"
-                  name="celular"
-                  value={profileData.celular}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={`w-full px-4 py-3 border rounded-lg text-gray-900 dark:text-white ${
-                    isEditing
-                      ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
-                      : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
-                  }`}
-                  placeholder="+56 9 1234 5678"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Teléfono Secundario
-                </label>
-                <input
-                  type="tel"
-                  name="cel_secundario"
-                  value={profileData.cel_secundario}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={`w-full px-4 py-3 border rounded-lg text-gray-900 dark:text-white ${
-                    isEditing
-                      ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
-                      : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
-                  }`}
-                  placeholder="+56 9 8765 4321"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Dirección
-                </label>
-                <input
-                  type="text"
-                  name="direccion"
-                  value={profileData.direccion}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className={`w-full px-4 py-3 border rounded-lg text-gray-900 dark:text-white ${
-                    isEditing
-                      ? 'bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-amber-500 focus:border-transparent'
-                      : 'bg-gray-100 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600 cursor-not-allowed'
-                  }`}
-                  placeholder="Calle, número, ciudad"
-                />
-              </div>
-            </div>
-          </div>
+          </motion.div>
 
           {/* Security Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 lg:p-8"
+          >
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
               <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -513,29 +544,45 @@ export default function EditarPerfil() {
             </h2>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">Contraseña</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Protege tu cuenta con una contraseña segura</p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-600">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                    <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Contraseña</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Protege tu cuenta con una contraseña segura</p>
+                  </div>
                 </div>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => setShowPasswordModal(true)}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-colors font-medium"
+                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl transition-all font-bold shadow-lg hover:shadow-xl self-start sm:self-center"
                 >
                   Cambiar Contraseña
-                </button>
+                </motion.button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Action Buttons */}
           {isEditing && (
-            <div className="flex gap-4">
-              <button
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="flex flex-col sm:flex-row gap-4"
+            >
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={guardando}
-                className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all font-semibold text-lg shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all font-bold shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {guardando ? (
                   <>
@@ -544,22 +591,24 @@ export default function EditarPerfil() {
                   </>
                 ) : (
                   <>
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     Guardar Cambios
                   </>
                 )}
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 type="button"
                 onClick={handleCancel}
                 disabled={guardando}
-                className="px-6 py-4 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded-xl transition-colors font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancelar
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           )}
         </form>
 
@@ -748,11 +797,13 @@ export default function EditarPerfil() {
                   </div>
 
                   {/* Botones de acción */}
-                  <div className="flex gap-3 pt-2">
-                    <button
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       type="submit"
                       disabled={guardando}
-                      className="flex-1 px-6 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl transition-all font-bold shadow-lg hover:shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {guardando ? (
                         <>
@@ -767,8 +818,10 @@ export default function EditarPerfil() {
                           Cambiar Contraseña
                         </>
                       )}
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       type="button"
                       onClick={() => {
                         setShowPasswordModal(false);
@@ -784,16 +837,18 @@ export default function EditarPerfil() {
                         });
                       }}
                       disabled={guardando}
-                      className="px-6 py-3.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-6 py-3 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-300 rounded-xl transition-colors font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Cancelar
-                    </button>
+                    </motion.button>
                   </div>
                 </form>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
+          </div>
+        </div>
       </div>
     </>
   );

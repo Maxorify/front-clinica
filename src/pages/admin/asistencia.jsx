@@ -8,7 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import * as XLSX from "xlsx";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart,
   Bar,
@@ -25,11 +25,35 @@ import {
 
 const API_URL = "http://localhost:5000";
 
-// Helper para parsear fechas UTC del backend correctamente
+// Helper para parsear fechas UTC del backend correctamente (sin offset de timezone)
 const parseUTCDate = (dateString) => {
   if (!dateString) return null;
-  const dateStr = dateString.endsWith("Z") ? dateString : dateString + "Z";
-  return new Date(dateStr);
+  
+  try {
+    // El backend retorna fechas en UTC como "2025-11-26T08:00:00.000Z"
+    // JavaScript las interpreta en timezone local causando offset
+    // Esta función extrae los componentes UTC y crea una fecha local con esos valores
+    const utcDate = new Date(dateString);
+    
+    // Validar que la fecha es válida
+    if (isNaN(utcDate.getTime())) {
+      console.error("❌ Fecha inválida parseada:", dateString);
+      return null;
+    }
+    
+    // Extraer componentes UTC y crear fecha local sin offset
+    return new Date(
+      utcDate.getUTCFullYear(),
+      utcDate.getUTCMonth(),
+      utcDate.getUTCDate(),
+      utcDate.getUTCHours(),
+      utcDate.getUTCMinutes(),
+      utcDate.getUTCSeconds()
+    );
+  } catch (error) {
+    console.error("❌ Error al parsear fecha:", dateString, error);
+    return null;
+  }
 };
 
 // Funciones de fetch para React Query
@@ -65,38 +89,68 @@ const fetchTurnosDia = async (fecha) => {
         celular: turno.doctor.celular || "",
         rol: { nombre: "Doctor" },
       },
-      inicio_turno: turno.marca_entrada || turno.inicio_turno,
-      finalizacion_turno: turno.marca_salida,
+      inicio_turno: turno.inicio_turno,
+      finalizacion_turno: turno.finalizacion_turno,
       estado: turno.estado_asistencia,
       minutos_atraso: turno.minutos_atraso || 0,
       marca_entrada: turno.marca_entrada,
       marca_salida: turno.marca_salida,
+      minutos_trabajados: turno.minutos_trabajados,
     };
   });
 };
 
 export default function Asistencia() {
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [notification, setNotification] = useState(null);
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState(null);
   const [menuAbiertoId, setMenuAbiertoId] = useState(null);
   const [filtros, setFiltros] = useState({
     fecha_inicio: "",
-    fecha_fin: "",
     usuario_id: "",
     solo_activos: false,
   });
 
-  // REACT QUERY - Caché automático de 5 minutos
+  // REACT QUERY - Caché automático de 2 minutos
   const {
     data: asistencias = [],
     isLoading: loading,
     refetch,
   } = useQuery({
-    queryKey: ["turnos-dia", filtros.fecha_inicio || filtros.fecha_fin],
-    queryFn: () => fetchTurnosDia(filtros.fecha_inicio || filtros.fecha_fin),
+    queryKey: ["turnos-dia", filtros.fecha_inicio],
+    queryFn: () => fetchTurnosDia(filtros.fecha_inicio),
     staleTime: 2 * 60 * 1000, // 2 minutos para asistencia (datos más dinámicos)
+    refetchOnWindowFocus: false, // No refetch automático al cambiar de ventana
   });
+
+  // Query adicional: Historial reciente del empleado seleccionado (optimizado)
+  const { data: historialData, isLoading: loadingHistorial } = useQuery({
+    queryKey: ["historial-doctor", empleadoSeleccionado?.id],
+    queryFn: async () => {
+      if (!empleadoSeleccionado) return { turnos: [], total: 0 };
+      
+      const { data } = await axios.get(
+        `${API_URL}/asistencia/doctor/${empleadoSeleccionado.id}/historial-reciente?dias=30`
+      );
+      return data;
+    },
+    enabled: !!empleadoSeleccionado,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
+
+  const ultimos7Dias = useMemo(() => {
+    if (!historialData?.turnos) return [];
+    
+    // Filtrar solo los últimos 7 días del historial de 30
+    const hace7Dias = new Date();
+    hace7Dias.setDate(hace7Dias.getDate() - 7);
+    
+    return historialData.turnos.filter(t => {
+      const fecha = parseUTCDate(t.inicio_turno);
+      return fecha && fecha >= hace7Dias;
+    });
+  }, [historialData]);
 
   const turnosActivos = useMemo(() => {
     return asistencias
@@ -106,38 +160,6 @@ export default function Asistencia() {
         id: t.id,
       }));
   }, [asistencias]);
-
-  useEffect(() => {
-    if (!notification) return;
-    const timer = setTimeout(() => setNotification(null), 4000);
-    return () => clearTimeout(timer);
-  }, [notification]);
-
-  // Cerrar menú al hacer clic fuera
-  useEffect(() => {
-    const handleClickOutside = () => setMenuAbiertoId(null);
-    if (menuAbiertoId) {
-      document.addEventListener("click", handleClickOutside);
-      return () => document.removeEventListener("click", handleClickOutside);
-    }
-  }, [menuAbiertoId]);
-  const cargarTurnosActivos = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/asistencia/turnos-dia`);
-      const turnosEnCurso =
-        response.data?.turnos?.filter((t) => t.estado === "EN_TURNO") || [];
-      setTurnosActivos(
-        turnosEnCurso.map((t) => ({
-          usuario_sistema_id: t.doctor.id,
-          id: t.asistencia_id,
-        }))
-      );
-    } catch (error) {
-      if (error.response?.status !== 404) {
-        console.error("Error al cargar turnos activos:", error);
-      }
-    }
-  };
 
   useEffect(() => {
     if (!notification) return;
@@ -183,7 +205,16 @@ export default function Asistencia() {
         `${API_URL}/asistencia/registrar-salida/${asistenciaId}`
       );
       showNotification("success", "Salida registrada correctamente");
-      await refetch(); // Refetch con React Query
+      
+      // Invalidar cache para forzar actualización inmediata
+      await queryClient.invalidateQueries({ queryKey: ["turnos-dia"] });
+      
+      // Si hay empleado seleccionado, invalidar su historial
+      if (empleadoSeleccionado) {
+        await queryClient.invalidateQueries({ 
+          queryKey: ["historial-doctor", empleadoSeleccionado.id] 
+        });
+      }
     } catch (error) {
       showNotification(
         "error",
@@ -201,7 +232,8 @@ export default function Asistencia() {
 
   const formatDateTime = (dateTimeString) => {
     if (!dateTimeString) return "-";
-    const date = new Date(dateTimeString);
+    const date = parseUTCDate(dateTimeString);
+    if (!date) return "-";
     return date.toLocaleString("es-CL", {
       day: "2-digit",
       month: "2-digit",
@@ -279,26 +311,20 @@ export default function Asistencia() {
       const empleadoData = asistencia.usuario_sistema;
       const nombreCompleto = getEmpleadoNombre(empleadoData).toLowerCase();
       const rut = empleadoData?.rut?.toLowerCase() || "";
-      return (
-        nombreCompleto.includes(searchTerm.toLowerCase()) ||
-        rut.includes(searchTerm.toLowerCase())
-      );
+      
+      const matchBusqueda = nombreCompleto.includes(searchTerm.toLowerCase()) ||
+        rut.includes(searchTerm.toLowerCase());
+      
+      return matchBusqueda;
     });
   }, [asistencias, searchTerm]);
 
   // Estadísticas del empleado seleccionado
   const estadisticasEmpleado = useMemo(() => {
-    if (!empleadoSeleccionado) return null;
+    if (!empleadoSeleccionado || !historialData?.turnos) return null;
 
-    const asistenciasEmpleado = asistencias.filter(
-      (a) => a.usuario_sistema_id === empleadoSeleccionado.id
-    );
-
-    console.log(
-      "🔍 Asistencias de empleado:",
-      empleadoSeleccionado.nombre,
-      asistenciasEmpleado
-    );
+    // Usar datos del historial completo (30 días) - backend ya filtra correctamente
+    const asistenciasEmpleado = historialData.turnos;
 
     // Esta semana
     const inicioSemana = new Date();
@@ -306,19 +332,19 @@ export default function Asistencia() {
     inicioSemana.setHours(0, 0, 0, 0);
 
     const asistenciasSemana = asistenciasEmpleado.filter((a) => {
-      const fecha = parseUTCDate(a.inicio_turno);
+      const fecha = parseUTCDate(a.marca_entrada);
       return fecha && fecha >= inicioSemana;
     });
 
-    const horasSemana = asistenciasSemana.reduce(
-      (acc, a) =>
-        acc + calcularHorasTrabajadas(a.inicio_turno, a.finalizacion_turno),
-      0
-    );
+    const horasSemana = asistenciasSemana.reduce((acc, a) => {
+      if (!a.minutos_trabajados) return acc;
+      return acc + (a.minutos_trabajados / 60);
+    }, 0);
+
     const diasSemana = new Set(
       asistenciasSemana
         .map((a) => {
-          const fecha = parseUTCDate(a.inicio_turno);
+          const fecha = parseUTCDate(a.marca_entrada);
           return fecha ? fecha.toDateString() : null;
         })
         .filter(Boolean)
@@ -330,19 +356,19 @@ export default function Asistencia() {
     inicioMes.setHours(0, 0, 0, 0);
 
     const asistenciasMes = asistenciasEmpleado.filter((a) => {
-      const fecha = parseUTCDate(a.inicio_turno);
+      const fecha = parseUTCDate(a.marca_entrada);
       return fecha && fecha >= inicioMes;
     });
 
-    const horasMes = asistenciasMes.reduce(
-      (acc, a) =>
-        acc + calcularHorasTrabajadas(a.inicio_turno, a.finalizacion_turno),
-      0
-    );
+    const horasMes = asistenciasMes.reduce((acc, a) => {
+      if (!a.minutos_trabajados) return acc;
+      return acc + (a.minutos_trabajados / 60);
+    }, 0);
+
     const diasMes = new Set(
       asistenciasMes
         .map((a) => {
-          const fecha = parseUTCDate(a.inicio_turno);
+          const fecha = parseUTCDate(a.marca_entrada);
           return fecha ? fecha.toDateString() : null;
         })
         .filter(Boolean)
@@ -358,18 +384,18 @@ export default function Asistencia() {
       fecha.setHours(0, 0, 0, 0);
 
       const asistenciasDia = asistenciasEmpleado.filter((a) => {
-        const fechaAsistencia = parseUTCDate(a.inicio_turno);
+        if (!a.marca_entrada) return false;
+        const fechaAsistencia = parseUTCDate(a.marca_entrada);
         return (
           fechaAsistencia &&
           fechaAsistencia.toDateString() === fecha.toDateString()
         );
       });
 
-      const horasDia = asistenciasDia.reduce(
-        (acc, a) =>
-          acc + calcularHorasTrabajadas(a.inicio_turno, a.finalizacion_turno),
-        0
-      );
+      const horasDia = asistenciasDia.reduce((acc, a) => {
+        if (!a.minutos_trabajados) return acc;
+        return acc + (a.minutos_trabajados / 60);
+      }, 0);
 
       datosGrafico.push({
         dia: diasSemanaLabels[fecha.getDay()],
@@ -381,15 +407,8 @@ export default function Asistencia() {
       });
     }
 
-    // Historial reciente
-    const historialReciente = asistenciasEmpleado
-      .sort((a, b) => {
-        const fechaA = parseUTCDate(a.inicio_turno);
-        const fechaB = parseUTCDate(b.inicio_turno);
-        if (!fechaA || !fechaB) return 0;
-        return fechaB - fechaA;
-      })
-      .slice(0, 7);
+    // Historial reciente (últimos 30 registros del historial)
+    const historialReciente = asistenciasEmpleado.slice(0, 30);
 
     return {
       horasSemana,
@@ -401,13 +420,10 @@ export default function Asistencia() {
       datosGrafico,
       historialReciente,
       totalAsistencias: asistenciasEmpleado.length,
-      turnosCompletos: asistenciasEmpleado.filter((a) => a.finalizacion_turno)
-        .length,
-      turnosIncompletos: asistenciasEmpleado.filter(
-        (a) => !a.finalizacion_turno
-      ).length,
+      turnosCompletos: asistenciasEmpleado.filter((a) => a.marca_salida).length,
+      turnosIncompletos: asistenciasEmpleado.filter((a) => !a.marca_salida).length,
     };
-  }, [empleadoSeleccionado, asistencias]);
+  }, [empleadoSeleccionado, historialData]);
 
   // Verificar si empleado está en turno activo
   const empleadoEnTurno = (empleadoId) => {
@@ -744,15 +760,7 @@ export default function Asistencia() {
                 value={filtros.fecha_inicio}
                 onChange={handleFiltroChange}
                 className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                title="Fecha inicio"
-              />
-              <input
-                type="date"
-                name="fecha_fin"
-                value={filtros.fecha_fin}
-                onChange={handleFiltroChange}
-                className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                title="Fecha fin"
+                title="Seleccionar fecha"
               />
               <select
                 name="usuario_id"
@@ -890,8 +898,8 @@ export default function Asistencia() {
                   ) : (
                     asistenciasFiltradas.map((asistencia) => {
                       const horas = calcularHorasTrabajadas(
-                        asistencia.inicio_turno,
-                        asistencia.finalizacion_turno
+                        asistencia.marca_entrada,
+                        asistencia.marca_salida || asistencia.finalizacion_programada
                       );
                       const isSelected =
                         empleadoSeleccionado?.id ===
@@ -937,19 +945,25 @@ export default function Asistencia() {
                             </div>
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-white">
-                            <div>{formatDate(asistencia.inicio_turno)}</div>
-                            <div className="text-[10px] text-gray-500">
-                              {formatTime(asistencia.inicio_turno)}
-                            </div>
+                            {asistencia.marca_entrada ? (
+                              <>
+                                <div>{formatDate(asistencia.marca_entrada)}</div>
+                                <div className="text-[10px] text-gray-500">
+                                  {formatTime(asistencia.marca_entrada)}
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-white">
-                            {asistencia.finalizacion_turno ? (
+                            {asistencia.marca_salida || asistencia.finalizacion_programada ? (
                               <>
                                 <div>
-                                  {formatDate(asistencia.finalizacion_turno)}
+                                  {formatDate(asistencia.marca_salida || asistencia.finalizacion_programada)}
                                 </div>
                                 <div className="text-[10px] text-gray-500">
-                                  {formatTime(asistencia.finalizacion_turno)}
+                                  {formatTime(asistencia.marca_salida || asistencia.finalizacion_programada)}
                                 </div>
                               </>
                             ) : (
@@ -1351,20 +1365,19 @@ export default function Asistencia() {
                       {estadisticasEmpleado?.historialReciente &&
                       estadisticasEmpleado.historialReciente.length > 0 ? (
                         estadisticasEmpleado.historialReciente
-                          .slice(0, 5)
                           .filter((a) => a.inicio_turno) // Filtrar registros sin fecha válida
                           .map((asistencia, idx) => {
                             const inicioDate = parseUTCDate(
-                              asistencia.inicio_turno
+                              asistencia.marca_entrada || asistencia.inicio_turno
                             );
                             const finDate = parseUTCDate(
-                              asistencia.finalizacion_turno
+                              asistencia.marca_salida || asistencia.finalizacion_programada
                             );
 
-                            const horasTrabajadas =
-                              finDate && inicioDate
-                                ? (finDate - inicioDate) / (1000 * 60 * 60)
-                                : 0;
+                            // Usar minutos_trabajados del backend (ya calculado correctamente)
+                            const horasTrabajadas = asistencia.minutos_trabajados
+                              ? asistencia.minutos_trabajados / 60
+                              : 0;
 
                             // Validar que inicio_turno sea una fecha válida
                             const esFechaValida =
@@ -1407,18 +1420,22 @@ export default function Asistencia() {
                                   </p>
                                   <span
                                     className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                                      asistencia.estado === "ASISTIO"
+                                      asistencia.estado_asistencia === "ASISTIO" || asistencia.estado_asistencia === "ATRASO"
                                         ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                        : asistencia.estado === "AUSENTE"
+                                        : asistencia.estado_asistencia === "AUSENTE"
                                         ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                                         : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
                                     }`}
                                   >
-                                    {asistencia.estado === "ASISTIO"
+                                    {asistencia.estado_asistencia === "ASISTIO"
                                       ? "OK"
-                                      : asistencia.estado === "AUSENTE"
+                                      : asistencia.estado_asistencia === "ATRASO"
+                                      ? "Atraso"
+                                      : asistencia.estado_asistencia === "AUSENTE"
                                       ? "Ausente"
-                                      : "En curso"}
+                                      : asistencia.estado_asistencia === "EN_TURNO"
+                                      ? "En curso"
+                                      : asistencia.estado_asistencia}
                                   </span>
                                 </div>
                               </div>
