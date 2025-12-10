@@ -119,7 +119,7 @@ export default function SidebarSecretaria({
           ),
         },
         {
-          title: "Boletas",
+          title: "Comprobantes",
           path: "/secretaria/boletas-generadas",
           icon: (
             <svg

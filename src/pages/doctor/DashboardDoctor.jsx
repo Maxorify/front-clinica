@@ -3,14 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  formatTime,
+  formatDate,
+  formatDateTime,
+  parseUTCDate,
+} from "../../utils/dateUtils";
 
 const API_URL = "http://localhost:5000";
-
-// Helper para parsear fechas UTC del backend correctamente
-const parseUTCDate = (dateString) => {
-  if (!dateString) return null;
-  return new Date(dateString);
-};
 
 // Funciones de fetch para React Query
 const fetchDoctorStats = async (doctorId, fecha) => {
@@ -53,31 +53,44 @@ export default function DashboardDoctor() {
   const [loadingAsistencia, setLoadingAsistencia] = useState(false);
   const [notification, setNotification] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  
+
   const doctorId = localStorage.getItem("user_id");
-  const fechaHoy = new Date().toISOString().split("T")[0];
+  // Obtener fecha actual en timezone de Chile
+  const fechaHoy = new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Santiago",
+  }); // Formato YYYY-MM-DD en timezone Chile
 
   // React Query - Estadísticas del doctor
-  const { data: stats = { citas_hoy: 0, atendidos_hoy: 0, pendientes_hoy: 0, cancelados_hoy: 0, total_pacientes_mes: 0 }, isLoading: loadingStats } = useQuery({
-    queryKey: ['doctorStats', doctorId, fechaHoy],
+  const {
+    data: stats = {
+      citas_hoy: 0,
+      atendidos_hoy: 0,
+      pendientes_hoy: 0,
+      cancelados_hoy: 0,
+      total_pacientes_mes: 0,
+    },
+    isLoading: loadingStats,
+  } = useQuery({
+    queryKey: ["doctorStats", doctorId, fechaHoy],
     queryFn: () => fetchDoctorStats(doctorId, fechaHoy),
     staleTime: 2 * 60 * 1000, // 2 minutos
   });
 
   // React Query - Citas del día
   const { data: citasHoy = [], isLoading: loadingCitas } = useQuery({
-    queryKey: ['doctorCitas', doctorId, fechaHoy],
+    queryKey: ["doctorCitas", doctorId, fechaHoy],
     queryFn: () => fetchDoctorCitas(doctorId, fechaHoy),
     staleTime: 1 * 60 * 1000, // 1 minuto
   });
 
   // React Query - Turno del día
-  const { data: turnoHoy = { tiene_turno: false }, refetch: refetchTurno } = useQuery({
-    queryKey: ['turnoHoy', doctorId],
-    queryFn: () => fetchTurnoHoy(doctorId),
-    staleTime: 30 * 1000, // 30 segundos
-    refetchInterval: 30 * 1000, // Auto-refetch cada 30 segundos
-  });
+  const { data: turnoHoy = { tiene_turno: false }, refetch: refetchTurno } =
+    useQuery({
+      queryKey: ["turnoHoy", doctorId],
+      queryFn: () => fetchTurnoHoy(doctorId),
+      staleTime: 30 * 1000, // 30 segundos
+      refetchInterval: 30 * 1000, // Auto-refetch cada 30 segundos
+    });
 
   const loading = loadingStats || loadingCitas;
 
@@ -110,7 +123,7 @@ export default function DashboardDoctor() {
       }
 
       // Invalidar caché para refrescar turno
-      queryClient.invalidateQueries({ queryKey: ['turnoHoy', doctorId] });
+      queryClient.invalidateQueries({ queryKey: ["turnoHoy", doctorId] });
     } catch (error) {
       showNotification(
         "error",
@@ -129,9 +142,9 @@ export default function DashboardDoctor() {
       const response = await axios.post(
         `${API_URL}/asistencia/doctor/marcar-salida?usuario_id=${doctorId}`
       );
-      
+
       // Invalidar caché para refrescar turno
-      queryClient.invalidateQueries({ queryKey: ['turnoHoy', doctorId] });
+      queryClient.invalidateQueries({ queryKey: ["turnoHoy", doctorId] });
       showNotification(
         "success",
         `✓ Turno finalizado • ${response.data.horas_trabajadas}h trabajadas`
@@ -304,23 +317,13 @@ export default function DashboardDoctor() {
                         </div>
                         <div className="text-white font-bold text-lg">
                           {turnoHoy?.turno_programado?.inicio
-                            ? parseUTCDate(
-                                turnoHoy.turno_programado.inicio
-                              ).toLocaleTimeString("es-CL", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
+                            ? formatTime(turnoHoy.turno_programado.inicio)
                             : "---"}
                         </div>
                         <div className="text-blue-100 text-sm">
                           -{" "}
                           {turnoHoy?.turno_programado?.fin
-                            ? parseUTCDate(
-                                turnoHoy.turno_programado.fin
-                              ).toLocaleTimeString("es-CL", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
+                            ? formatTime(turnoHoy.turno_programado.fin)
                             : "---"}
                         </div>
                       </div>
@@ -332,12 +335,7 @@ export default function DashboardDoctor() {
                         </div>
                         <div className="text-white font-bold text-lg">
                           {turnoHoy?.asistencia?.hora_entrada
-                            ? parseUTCDate(
-                                turnoHoy.asistencia.hora_entrada
-                              ).toLocaleTimeString("es-CL", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
+                            ? formatTime(turnoHoy.asistencia.hora_entrada)
                             : "---"}
                         </div>
                         {turnoHoy?.asistencia?.minutos_atraso > 0 && (
@@ -674,10 +672,7 @@ export default function DashboardDoctor() {
                     <div className="flex-shrink-0">
                       <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-3 shadow-md group-hover:shadow-lg transition-shadow">
                         <div className="text-2xl font-bold leading-none">
-                          {new Date(cita.fecha_atencion).toLocaleTimeString(
-                            "es-CL",
-                            { hour: "2-digit", minute: "2-digit" }
-                          )}
+                          {formatTime(cita.fecha_atencion)}
                         </div>
                       </div>
                     </div>

@@ -140,10 +140,10 @@ export default function AgendamientoConsultas() {
   // Estadísticas computadas desde citas
   const estadisticas = {
     total: citas.length,
-    confirmadas: citas.filter((c) => c.estado === "CONFIRMADA").length,
-    pendientes: citas.filter((c) => c.estado === "PENDIENTE").length,
-    en_consulta: citas.filter((c) => c.estado === "EN_CONSULTA").length,
-    canceladas: citas.filter((c) => c.estado === "CANCELADA").length,
+    confirmadas: citas.filter((c) => c.estado_actual === "Confirmada").length,
+    pendientes: citas.filter((c) => c.estado_actual === "Pendiente").length,
+    en_consulta: citas.filter((c) => c.estado_actual === "En Consulta").length,
+    canceladas: citas.filter((c) => c.estado_actual === "Cancelada").length,
   };
 
   const mostrarNotificacion = (mensaje, tipo) => {

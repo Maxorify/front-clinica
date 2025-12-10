@@ -103,3 +103,62 @@ export const formatChileDateTime = (utcDateStr) => {
     minute: '2-digit'
   });
 };
+
+// ====================================================================
+// FUNCIONES PARA MOSTRAR FECHAS UTC DEL BACKEND EN ZONA HORARIA LOCAL
+// Usa conversión automática del navegador (America/Santiago)
+// ====================================================================
+
+/**
+ * Formatea hora UTC a hora local de Chile (HH:MM formato 24h)
+ * Conversión automática usando zona horaria del navegador
+ * @param {string} dateString - Fecha ISO UTC del backend
+ * @returns {string} Hora formateada "HH:MM" en zona Chile
+ */
+export const formatTime = (dateString) => {
+  if (!dateString) return '';
+  return new Date(dateString).toLocaleTimeString('es-CL', {
+    timeZone: 'America/Santiago',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+};
+
+/**
+ * Formatea fecha UTC a fecha local de Chile (DD/MM/YYYY)
+ * Conversión automática usando zona horaria del navegador
+ * @param {string} dateString - Fecha ISO UTC del backend
+ * @returns {string} Fecha formateada en zona Chile
+ */
+export const formatDate = (dateString) => {
+  if (!dateString) return '';
+  return new Date(dateString).toLocaleDateString('es-CL', {
+    timeZone: 'America/Santiago'
+  });
+};
+
+/**
+ * Formatea fecha y hora UTC a local de Chile (DD/MM/YYYY HH:MM:SS)
+ * Conversión automática usando zona horaria del navegador
+ * @param {string} dateString - Fecha ISO UTC del backend
+ * @returns {string} Fecha y hora formateada en zona Chile
+ */
+export const formatDateTime = (dateString) => {
+  if (!dateString) return '';
+  return new Date(dateString).toLocaleString('es-CL', {
+    timeZone: 'America/Santiago',
+    hour12: false
+  });
+};
+
+/**
+ * Parsea fecha UTC del backend a objeto Date en zona horaria local
+ * Usado para cálculos de diferencias de tiempo
+ * @param {string} dateString - Fecha ISO UTC del backend
+ * @returns {Date} Objeto Date en zona local
+ */
+export const parseUTCDate = (dateString) => {
+  if (!dateString) return null;
+  return new Date(dateString);
+};

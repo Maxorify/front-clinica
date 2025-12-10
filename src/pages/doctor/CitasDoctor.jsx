@@ -3,6 +3,13 @@ import { useLocation } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { generarRecetaPDF } from "../../utils/generarRecetaPDF";
+import {
+  formatTime,
+  formatDate,
+  formatDateTime,
+  parseUTCDate,
+  utcToChileDate,
+} from "../../utils/dateUtils";
 
 const API_URL = "http://localhost:5000";
 
@@ -29,22 +36,27 @@ export default function CitasDoctor() {
   const [citaEnConsulta, setCitaEnConsulta] = useState(null);
   const [vistaAtencion, setVistaAtencion] = useState(false);
   const [busquedaDiagnostico, setBusquedaDiagnostico] = useState("");
-  const [diagnosticosSeleccionados, setDiagnosticosSeleccionados] = useState([]);
+  const [diagnosticosSeleccionados, setDiagnosticosSeleccionados] = useState(
+    []
+  );
   const citaRefs = useRef({});
-  
+
   const doctorId = localStorage.getItem("user_id");
-  const fechaHoy = new Date().toISOString().split("T")[0];
+  // Obtener fecha actual en timezone de Chile para evitar problemas de conversión
+  const fechaHoy = new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Santiago",
+  }); // Formato YYYY-MM-DD en timezone Chile
 
   // React Query - Citas del doctor
   const { data: citas = [], isLoading: loading } = useQuery({
-    queryKey: ['doctorCitasLista', doctorId, fechaHoy],
+    queryKey: ["doctorCitasLista", doctorId, fechaHoy],
     queryFn: () => fetchCitasDoctor(doctorId, fechaHoy),
     staleTime: 1 * 60 * 1000,
   });
 
   // React Query - Diagnósticos
   const { data: diagnosticos = [] } = useQuery({
-    queryKey: ['diagnosticos'],
+    queryKey: ["diagnosticos"],
     queryFn: fetchDiagnosticos,
     staleTime: 10 * 60 * 1000,
   });
@@ -184,22 +196,30 @@ export default function CitasDoctor() {
       // Setear inmediatamente la cita y abrir vista
       setCitaEnConsulta({
         cita: cita,
-        paciente: cita.paciente
+        paciente: cita.paciente,
       });
       setVistaAtencion(true);
 
+      // Cargar historial médico del paciente
+      if (cita.paciente?.id) {
+        cargarHistorialMedico(cita.paciente.id);
+      }
+
       // Cambiar estado a "En Consulta" en background
-      await fetch(`http://localhost:5000/Citas/cita/${cita.id}/cambiar-estado`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ estado: "En Consulta" }),
-      });
+      await fetch(
+        `http://localhost:5000/Citas/cita/${cita.id}/cambiar-estado`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ estado: "En Consulta" }),
+        }
+      );
 
       // Recargar datos
-      queryClient.invalidateQueries({ queryKey: ['doctorCitasLista'] });
+      queryClient.invalidateQueries({ queryKey: ["doctorCitasLista"] });
     } catch (error) {
       console.error("Error al iniciar consulta:", error);
       alert("Error al iniciar la consulta");
@@ -272,6 +292,7 @@ export default function CitasDoctor() {
       // Resetear vista
       setCitaEnConsulta(null);
       setVistaAtencion(false);
+      setHistorialMedico([]); // Limpiar historial
       setFormularioConsulta({
         motivo_consulta: "",
         antecedentes: "",
@@ -284,7 +305,7 @@ export default function CitasDoctor() {
       });
 
       // Recargar citas INMEDIATAMENTE (refetch fuerza recarga, no usa cache)
-      await queryClient.refetchQueries({ queryKey: ['doctorCitasLista'] });
+      await queryClient.refetchQueries({ queryKey: ["doctorCitasLista"] });
     } catch (error) {
       console.error("Error al finalizar consulta:", error);
       alert("Error al finalizar la consulta");
@@ -516,7 +537,10 @@ export default function CitasDoctor() {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setVistaAtencion(false)}
+                    onClick={() => {
+                      setVistaAtencion(false);
+                      setHistorialMedico([]); // Limpiar historial al salir
+                    }}
                     className="px-6 py-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-xl text-white font-medium transition-all flex items-center gap-2"
                   >
                     <svg
@@ -1121,6 +1145,7 @@ export default function CitasDoctor() {
                                   day: "2-digit",
                                   month: "long",
                                   year: "numeric",
+                                  timeZone: "America/Santiago",
                                 })}
                               </span>
                               {consulta.especialidad && (
@@ -1453,12 +1478,7 @@ export default function CitasDoctor() {
                                 } text-white rounded-xl p-4 shadow-md group-hover:shadow-lg transition-shadow min-w-[100px] text-center`}
                               >
                                 <div className="text-3xl font-bold leading-none mb-1">
-                                  {new Date(
-                                    cita.fecha_atencion
-                                  ).toLocaleTimeString("es-CL", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
+                                  {formatTime(cita.fecha_atencion)}
                                 </div>
                                 <div className="text-xs opacity-90">
                                   {new Date(
@@ -1466,6 +1486,7 @@ export default function CitasDoctor() {
                                   ).toLocaleDateString("es-CL", {
                                     day: "2-digit",
                                     month: "short",
+                                    timeZone: "America/Santiago",
                                   })}
                                 </div>
                               </div>
@@ -1573,9 +1594,13 @@ export default function CitasDoctor() {
                                   onClick={() => {
                                     setCitaEnConsulta({
                                       cita: cita,
-                                      paciente: cita.paciente
+                                      paciente: cita.paciente,
                                     });
                                     setVistaAtencion(true);
+                                    // Cargar historial médico del paciente
+                                    if (cita.paciente?.id) {
+                                      cargarHistorialMedico(cita.paciente.id);
+                                    }
                                   }}
                                   className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center gap-2"
                                 >
@@ -1674,12 +1699,7 @@ export default function CitasDoctor() {
                             <div className="flex-shrink-0">
                               <div className="bg-gradient-to-br from-gray-400 to-gray-500 text-white rounded-xl p-4 shadow-sm min-w-[100px] text-center">
                                 <div className="text-3xl font-bold leading-none mb-1">
-                                  {new Date(
-                                    cita.fecha_atencion
-                                  ).toLocaleTimeString("es-CL", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
+                                  {formatTime(cita.fecha_atencion)}
                                 </div>
                                 <div className="text-xs opacity-90">
                                   {new Date(
@@ -1687,6 +1707,7 @@ export default function CitasDoctor() {
                                   ).toLocaleDateString("es-CL", {
                                     day: "2-digit",
                                     month: "short",
+                                    timeZone: "America/Santiago",
                                   })}
                                 </div>
                               </div>

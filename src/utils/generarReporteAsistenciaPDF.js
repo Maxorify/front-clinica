@@ -21,7 +21,8 @@ const formatearFecha = (fecha) => {
   return new Date(fecha).toLocaleDateString("es-CL", {
     day: "2-digit",
     month: "2-digit",
-    year: "numeric"
+    year: "numeric",
+    timeZone: "America/Santiago"
   });
 };
 
@@ -32,7 +33,8 @@ const formatearHora = (fecha) => {
   if (!fecha) return "-";
   return new Date(fecha).toLocaleTimeString("es-CL", {
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: "America/Santiago"
   });
 };
 
@@ -263,17 +265,22 @@ export const generarReporteAsistenciaPDF = async ({ empleado, asistencias, fecha
       doc.rect(15, yPos - 4, pageWidth - 30, 7, "F");
     }
 
-    const fecha = formatearFecha(asistencia.inicio_turno);
-    const entrada = formatearHora(asistencia.inicio_turno);
-    const salida = asistencia.finalizacion_turno ? formatearHora(asistencia.finalizacion_turno) : "-";
+    // Usar marca_entrada y marca_salida (asistencia real) en vez de inicio_turno/finalizacion_turno (horario programado)
+    const fechaEntrada = asistencia.marca_entrada || asistencia.inicio_turno;
+    const fecha = formatearFecha(fechaEntrada);
+    const entrada = formatearHora(fechaEntrada);
+    const salida = asistencia.marca_salida ? formatearHora(asistencia.marca_salida) : "-";
 
     let horas = "-";
-    if (asistencia.inicio_turno && asistencia.finalizacion_turno) {
-      const diff = (new Date(asistencia.finalizacion_turno) - new Date(asistencia.inicio_turno)) / 1000 / 60 / 60;
+    if (asistencia.marca_entrada && asistencia.marca_salida) {
+      const diff = (new Date(asistencia.marca_salida) - new Date(asistencia.marca_entrada)) / 1000 / 60 / 60;
       horas = `${diff.toFixed(2)}`;
+    } else if (asistencia.minutos_trabajados) {
+      // Si no hay marca_salida pero hay minutos_trabajados (turno en curso)
+      horas = `${(asistencia.minutos_trabajados / 60).toFixed(2)}`;
     }
 
-    const estado = asistencia.finalizacion_turno ? "Completo" : "En turno";
+    const estado = asistencia.marca_salida ? "Completo" : "En turno";
 
     doc.setTextColor(...colorTexto);
     doc.text(fecha, 17, yPos);

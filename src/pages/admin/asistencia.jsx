@@ -18,43 +18,22 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { generarReporteAsistenciaBetaPDF } from "../../utils/generarReporteAsistenciaBetaPDF";
+import { generarReporteAsistenciaBetaEXCEL } from "../../utils/generarReporteAsistenciaBetaEXCEL";
 import {
-  generarReporteAsistenciaPDF,
-  generarReporteGeneralPDF,
-} from "../../utils/generarReporteAsistenciaPDF";
+  formatTime,
+  formatDate,
+  formatDateTime,
+  parseUTCDate,
+} from "../../utils/dateUtils";
 
 const API_URL = "http://localhost:5000";
 
-// Helper para parsear fechas UTC del backend correctamente (sin offset de timezone)
-const parseUTCDate = (dateString) => {
-  if (!dateString) return null;
-  
-  try {
-    // El backend retorna fechas en UTC como "2025-11-26T08:00:00.000Z"
-    // JavaScript las interpreta en timezone local causando offset
-    // Esta función extrae los componentes UTC y crea una fecha local con esos valores
-    const utcDate = new Date(dateString);
-    
-    // Validar que la fecha es válida
-    if (isNaN(utcDate.getTime())) {
-      console.error("❌ Fecha inválida parseada:", dateString);
-      return null;
-    }
-    
-    // Extraer componentes UTC y crear fecha local sin offset
-    return new Date(
-      utcDate.getUTCFullYear(),
-      utcDate.getUTCMonth(),
-      utcDate.getUTCDate(),
-      utcDate.getUTCHours(),
-      utcDate.getUTCMinutes(),
-      utcDate.getUTCSeconds()
-    );
-  } catch (error) {
-    console.error("❌ Error al parsear fecha:", dateString, error);
-    return null;
-  }
-};
+// Wrappers para manejar valores vacíos (retornar "-" en vez de cadena vacía)
+const formatTimeWithDefault = (dateString) => formatTime(dateString) || "-";
+const formatDateWithDefault = (dateString) => formatDate(dateString) || "-";
+const formatDateTimeWithDefault = (dateString) =>
+  formatDateTime(dateString) || "-";
 
 // Funciones de fetch para React Query
 const fetchTurnosDia = async (fecha) => {
@@ -106,6 +85,8 @@ export default function Asistencia() {
   const [notification, setNotification] = useState(null);
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState(null);
   const [menuAbiertoId, setMenuAbiertoId] = useState(null);
+  const [generandoPDF, setGenerandoPDF] = useState(false);
+  const [generandoExcel, setGenerandoExcel] = useState(false);
   const [filtros, setFiltros] = useState({
     fecha_inicio: "",
     usuario_id: "",
@@ -129,7 +110,7 @@ export default function Asistencia() {
     queryKey: ["historial-doctor", empleadoSeleccionado?.id],
     queryFn: async () => {
       if (!empleadoSeleccionado) return { turnos: [], total: 0 };
-      
+
       const { data } = await axios.get(
         `${API_URL}/asistencia/doctor/${empleadoSeleccionado.id}/historial-reciente?dias=30`
       );
@@ -141,12 +122,12 @@ export default function Asistencia() {
 
   const ultimos7Dias = useMemo(() => {
     if (!historialData?.turnos) return [];
-    
+
     // Filtrar solo los últimos 7 días del historial de 30
     const hace7Dias = new Date();
     hace7Dias.setDate(hace7Dias.getDate() - 7);
-    
-    return historialData.turnos.filter(t => {
+
+    return historialData.turnos.filter((t) => {
       const fecha = parseUTCDate(t.inicio_turno);
       return fecha && fecha >= hace7Dias;
     });
@@ -205,14 +186,14 @@ export default function Asistencia() {
         `${API_URL}/asistencia/registrar-salida/${asistenciaId}`
       );
       showNotification("success", "Salida registrada correctamente");
-      
+
       // Invalidar cache para forzar actualización inmediata
       await queryClient.invalidateQueries({ queryKey: ["turnos-dia"] });
-      
+
       // Si hay empleado seleccionado, invalidar su historial
       if (empleadoSeleccionado) {
-        await queryClient.invalidateQueries({ 
-          queryKey: ["historial-doctor", empleadoSeleccionado.id] 
+        await queryClient.invalidateQueries({
+          queryKey: ["historial-doctor", empleadoSeleccionado.id],
         });
       }
     } catch (error) {
@@ -228,39 +209,6 @@ export default function Asistencia() {
     return `${empleadoData.nombre} ${empleadoData.apellido_paterno} ${
       empleadoData.apellido_materno || ""
     }`.trim();
-  };
-
-  const formatDateTime = (dateTimeString) => {
-    if (!dateTimeString) return "-";
-    const date = parseUTCDate(dateTimeString);
-    if (!date) return "-";
-    return date.toLocaleString("es-CL", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatTime = (dateTimeString) => {
-    if (!dateTimeString) return "-";
-    const date = parseUTCDate(dateTimeString);
-    if (!date) return "-";
-    return date.toLocaleTimeString("es-CL", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const formatDate = (dateTimeString) => {
-    if (!dateTimeString) return "-";
-    const date = parseUTCDate(dateTimeString);
-    if (!date) return "-";
-    return date.toLocaleDateString("es-CL", {
-      day: "2-digit",
-      month: "2-digit",
-    });
   };
 
   const calcularHorasTrabajadas = (inicio, fin) => {
@@ -311,10 +259,11 @@ export default function Asistencia() {
       const empleadoData = asistencia.usuario_sistema;
       const nombreCompleto = getEmpleadoNombre(empleadoData).toLowerCase();
       const rut = empleadoData?.rut?.toLowerCase() || "";
-      
-      const matchBusqueda = nombreCompleto.includes(searchTerm.toLowerCase()) ||
+
+      const matchBusqueda =
+        nombreCompleto.includes(searchTerm.toLowerCase()) ||
         rut.includes(searchTerm.toLowerCase());
-      
+
       return matchBusqueda;
     });
   }, [asistencias, searchTerm]);
@@ -338,7 +287,7 @@ export default function Asistencia() {
 
     const horasSemana = asistenciasSemana.reduce((acc, a) => {
       if (!a.minutos_trabajados) return acc;
-      return acc + (a.minutos_trabajados / 60);
+      return acc + a.minutos_trabajados / 60;
     }, 0);
 
     const diasSemana = new Set(
@@ -362,7 +311,7 @@ export default function Asistencia() {
 
     const horasMes = asistenciasMes.reduce((acc, a) => {
       if (!a.minutos_trabajados) return acc;
-      return acc + (a.minutos_trabajados / 60);
+      return acc + a.minutos_trabajados / 60;
     }, 0);
 
     const diasMes = new Set(
@@ -394,7 +343,7 @@ export default function Asistencia() {
 
       const horasDia = asistenciasDia.reduce((acc, a) => {
         if (!a.minutos_trabajados) return acc;
-        return acc + (a.minutos_trabajados / 60);
+        return acc + a.minutos_trabajados / 60;
       }, 0);
 
       datosGrafico.push({
@@ -421,7 +370,8 @@ export default function Asistencia() {
       historialReciente,
       totalAsistencias: asistenciasEmpleado.length,
       turnosCompletos: asistenciasEmpleado.filter((a) => a.marca_salida).length,
-      turnosIncompletos: asistenciasEmpleado.filter((a) => !a.marca_salida).length,
+      turnosIncompletos: asistenciasEmpleado.filter((a) => !a.marca_salida)
+        .length,
     };
   }, [empleadoSeleccionado, historialData]);
 
@@ -468,35 +418,94 @@ export default function Asistencia() {
     XLSX.writeFile(wb, nombreArchivo);
   };
 
-  // Generar reporte PDF individual
+  // Generar reporte PDF con métricas profesionales
   const generarReportePDF = async () => {
     if (!empleadoSeleccionado || !estadisticasEmpleado) return;
+    if (generandoPDF) return; // Prevenir múltiples clicks
 
-    const asistenciasEmpleado = asistencias
-      .filter((a) => a.usuario_sistema_id === empleadoSeleccionado.id)
-      .sort((a, b) => new Date(b.inicio_turno) - new Date(a.inicio_turno));
+    setGenerandoPDF(true);
+    try {
+      const asistenciasEmpleado = historialData?.turnos || [];
 
-    const fechaInicio =
-      filtros.fecha_inicio ||
-      new Date(new Date().setMonth(new Date().getMonth() - 1))
-        .toISOString()
-        .split("T")[0];
-    const fechaFin =
-      filtros.fecha_fin || new Date().toISOString().split("T")[0];
+      const fechaInicio =
+        filtros.fecha_inicio ||
+        new Date(new Date().setMonth(new Date().getMonth() - 1))
+          .toISOString()
+          .split("T")[0];
+      const fechaFin =
+        filtros.fecha_fin || new Date().toISOString().split("T")[0];
 
-    await generarReporteAsistenciaPDF({
-      empleado: empleadoSeleccionado,
-      asistencias: asistenciasEmpleado,
-      fechaInicio,
-      fechaFin,
-      estadisticas: {
-        totalHoras: estadisticasEmpleado.horasMes,
-        diasTrabajados: estadisticasEmpleado.diasMes,
-        promedioDiario: estadisticasEmpleado.promedioMes,
-        turnosCompletos: estadisticasEmpleado.turnosCompletos,
-        turnosIncompletos: estadisticasEmpleado.turnosIncompletos,
-      },
-    });
+      await generarReporteAsistenciaBetaPDF({
+        empleado: empleadoSeleccionado,
+        asistencias: asistenciasEmpleado,
+        fechaInicio,
+        fechaFin,
+        estadisticas: {
+          totalHoras: estadisticasEmpleado.horasMes,
+          diasTrabajados: estadisticasEmpleado.diasMes,
+          promedioDiario: estadisticasEmpleado.promedioMes,
+        },
+      });
+
+      setNotification({
+        type: "success",
+        message: "✅ PDF generado exitosamente",
+      });
+    } catch (error) {
+      console.error("Error generando PDF:", error);
+      setNotification({
+        type: "error",
+        message: "❌ Error al generar PDF",
+      });
+    } finally {
+      setGenerandoPDF(false);
+    }
+  };
+
+  // Generar reporte EXCEL con métricas profesionales
+  const generarReporteEXCEL = async () => {
+    if (!empleadoSeleccionado || !estadisticasEmpleado) return;
+    if (generandoExcel) return; // Prevenir múltiples clicks
+
+    setGenerandoExcel(true);
+    try {
+      const asistenciasEmpleado = historialData?.turnos || [];
+
+      const fechaInicio =
+        filtros.fecha_inicio ||
+        new Date(new Date().setMonth(new Date().getMonth() - 1))
+          .toISOString()
+          .split("T")[0];
+      const fechaFin =
+        filtros.fecha_fin || new Date().toISOString().split("T")[0];
+
+      await generarReporteAsistenciaBetaEXCEL({
+        empleado: empleadoSeleccionado,
+        asistencias: asistenciasEmpleado,
+        fechaInicio,
+        fechaFin,
+        estadisticas: {
+          totalHoras: estadisticasEmpleado.horasMes,
+          diasTrabajados: estadisticasEmpleado.diasMes,
+          promedioDiario: estadisticasEmpleado.promedioMes,
+          turnosCompletos: estadisticasEmpleado.turnosCompletos,
+          turnosIncompletos: estadisticasEmpleado.turnosIncompletos,
+        },
+      });
+
+      setNotification({
+        type: "success",
+        message: "✅ Excel generado exitosamente",
+      });
+    } catch (error) {
+      console.error("Error generando Excel:", error);
+      setNotification({
+        type: "error",
+        message: "❌ Error al generar Excel",
+      });
+    } finally {
+      setGenerandoExcel(false);
+    }
   };
 
   // Generar reporte general
@@ -866,7 +875,7 @@ export default function Asistencia() {
                 <thead className="bg-gray-50 dark:bg-gray-700 sticky top-0">
                   <tr>
                     <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 dark:text-gray-300 uppercase">
-                      Empleado
+                      Médico
                     </th>
                     <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 dark:text-gray-300 uppercase">
                       Inicio
@@ -899,7 +908,8 @@ export default function Asistencia() {
                     asistenciasFiltradas.map((asistencia) => {
                       const horas = calcularHorasTrabajadas(
                         asistencia.marca_entrada,
-                        asistencia.marca_salida || asistencia.finalizacion_programada
+                        asistencia.marca_salida ||
+                          asistencia.finalizacion_programada
                       );
                       const isSelected =
                         empleadoSeleccionado?.id ===
@@ -947,7 +957,9 @@ export default function Asistencia() {
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-white">
                             {asistencia.marca_entrada ? (
                               <>
-                                <div>{formatDate(asistencia.marca_entrada)}</div>
+                                <div>
+                                  {formatDate(asistencia.marca_entrada)}
+                                </div>
                                 <div className="text-[10px] text-gray-500">
                                   {formatTime(asistencia.marca_entrada)}
                                 </div>
@@ -957,13 +969,20 @@ export default function Asistencia() {
                             )}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900 dark:text-white">
-                            {asistencia.marca_salida || asistencia.finalizacion_programada ? (
+                            {asistencia.marca_salida ||
+                            asistencia.finalizacion_programada ? (
                               <>
                                 <div>
-                                  {formatDate(asistencia.marca_salida || asistencia.finalizacion_programada)}
+                                  {formatDate(
+                                    asistencia.marca_salida ||
+                                      asistencia.finalizacion_programada
+                                  )}
                                 </div>
                                 <div className="text-[10px] text-gray-500">
-                                  {formatTime(asistencia.marca_salida || asistencia.finalizacion_programada)}
+                                  {formatTime(
+                                    asistencia.marca_salida ||
+                                      asistencia.finalizacion_programada
+                                  )}
                                 </div>
                               </>
                             ) : (
@@ -1368,16 +1387,19 @@ export default function Asistencia() {
                           .filter((a) => a.inicio_turno) // Filtrar registros sin fecha válida
                           .map((asistencia, idx) => {
                             const inicioDate = parseUTCDate(
-                              asistencia.marca_entrada || asistencia.inicio_turno
+                              asistencia.marca_entrada ||
+                                asistencia.inicio_turno
                             );
                             const finDate = parseUTCDate(
-                              asistencia.marca_salida || asistencia.finalizacion_programada
+                              asistencia.marca_salida ||
+                                asistencia.finalizacion_programada
                             );
 
                             // Usar minutos_trabajados del backend (ya calculado correctamente)
-                            const horasTrabajadas = asistencia.minutos_trabajados
-                              ? asistencia.minutos_trabajados / 60
-                              : 0;
+                            const horasTrabajadas =
+                              asistencia.minutos_trabajados
+                                ? asistencia.minutos_trabajados / 60
+                                : 0;
 
                             // Validar que inicio_turno sea una fecha válida
                             const esFechaValida =
@@ -1420,20 +1442,26 @@ export default function Asistencia() {
                                   </p>
                                   <span
                                     className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                                      asistencia.estado_asistencia === "ASISTIO" || asistencia.estado_asistencia === "ATRASO"
+                                      asistencia.estado_asistencia ===
+                                        "ASISTIO" ||
+                                      asistencia.estado_asistencia === "ATRASO"
                                         ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                        : asistencia.estado_asistencia === "AUSENTE"
+                                        : asistencia.estado_asistencia ===
+                                          "AUSENTE"
                                         ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
                                         : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
                                     }`}
                                   >
                                     {asistencia.estado_asistencia === "ASISTIO"
                                       ? "OK"
-                                      : asistencia.estado_asistencia === "ATRASO"
+                                      : asistencia.estado_asistencia ===
+                                        "ATRASO"
                                       ? "Atraso"
-                                      : asistencia.estado_asistencia === "AUSENTE"
+                                      : asistencia.estado_asistencia ===
+                                        "AUSENTE"
                                       ? "Ausente"
-                                      : asistencia.estado_asistencia === "EN_TURNO"
+                                      : asistencia.estado_asistencia ===
+                                        "EN_TURNO"
                                       ? "En curso"
                                       : asistencia.estado_asistencia}
                                   </span>
@@ -1459,41 +1487,105 @@ export default function Asistencia() {
                 <div className="flex gap-2">
                   <button
                     onClick={generarReportePDF}
-                    className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+                    disabled={generandoPDF}
+                    className={`flex-1 px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg transition-all text-sm flex items-center justify-center gap-2 shadow-md ${
+                      generandoPDF ? "opacity-70 cursor-not-allowed" : ""
+                    }`}
+                    title="Reporte PDF profesional con métricas de productividad"
                   >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                      />
-                    </svg>
-                    PDF
+                    {generandoPDF ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Generando...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                          />
+                        </svg>
+                        Reporte PDF
+                      </>
+                    )}
                   </button>
                   <button
-                    onClick={exportarExcel}
-                    className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+                    onClick={generarReporteEXCEL}
+                    disabled={generandoExcel}
+                    className={`flex-1 px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all text-sm flex items-center justify-center gap-2 shadow-md ${
+                      generandoExcel ? "opacity-70 cursor-not-allowed" : ""
+                    }`}
+                    title="Reporte Excel profesional con múltiples hojas y métricas"
                   >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    Excel
+                    {generandoExcel ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Generando...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                          />
+                        </svg>
+                        Reporte Excel
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

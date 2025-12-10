@@ -3,6 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { generarBoletaPDF } from "../../utils/generarBoletaPDF";
+import {
+  formatTime,
+  formatDate,
+  formatDateTime,
+  parseUTCDate,
+} from "../../utils/dateUtils";
 
 const API_URL = "http://localhost:5000";
 
@@ -19,8 +25,11 @@ const fetchCitas = async (fechaFiltro) => {
 
 export default function Recepcion() {
   const queryClient = useQueryClient();
+  // Obtener fecha actual en timezone de Chile
   const [fechaFiltro, setFechaFiltro] = useState(
-    new Date().toISOString().split("T")[0]
+    new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/Santiago",
+    })
   );
   const [showModalPago, setShowModalPago] = useState(false);
   const [citaSeleccionada, setCitaSeleccionada] = useState(null);
@@ -37,7 +46,7 @@ export default function Recepcion() {
 
   // React Query - Caché inteligente
   const { data: citas = [], isLoading: loading } = useQuery({
-    queryKey: ['citas', fechaFiltro],
+    queryKey: ["citas", fechaFiltro],
     queryFn: () => fetchCitas(fechaFiltro),
     staleTime: 30 * 1000, // 30 segundos
   });
@@ -60,7 +69,7 @@ export default function Recepcion() {
 
   const actualizarCitas = async () => {
     // Refetch fuerza recarga inmediata sin usar cache
-    await queryClient.refetchQueries({ queryKey: ['citas', fechaFiltro] });
+    await queryClient.refetchQueries({ queryKey: ["citas", fechaFiltro] });
   };
 
   const abrirModalPago = async (cita) => {
@@ -174,6 +183,7 @@ export default function Recepcion() {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "America/Santiago",
     });
   };
 
@@ -274,7 +284,9 @@ export default function Recepcion() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">Recepción de Pacientes</h1>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                Recepción de Pacientes
+              </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1 font-medium">
                 Gestiona los pagos de las consultas médicas del día
               </p>
@@ -329,25 +341,8 @@ export default function Recepcion() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Citas Pendientes</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{citasFiltradas.length}</p>
-              </div>
-            </div>
-          </div>
-
-        {/* Lista de citas mejorada */}
-        {loading ? (
-          <div className="flex flex-col justify-center items-center h-64 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-500"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
                 <svg
-                  className="w-6 h-6 text-blue-500"
+                  className="w-6 h-6 text-green-600 dark:text-green-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -356,226 +351,257 @@ export default function Recepcion() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
                   />
                 </svg>
               </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Citas Pendientes
+                </p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {citasFiltradas.length}
+                </p>
+              </div>
             </div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400 font-medium">
-              Cargando citas...
-            </p>
           </div>
-        ) : citasFiltradas.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-16 text-center">
-            <div className="inline-flex p-5 bg-gray-50 dark:bg-gray-700 rounded-full mb-6">
-              <svg
-                className="w-16 h-16 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
+
+          {/* Lista de citas mejorada */}
+          {loading ? (
+            <div className="flex flex-col justify-center items-center h-64 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-500"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-blue-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400 font-medium">
+                Cargando citas...
+              </p>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-              No hay citas pendientes
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400">
-              No se encontraron consultas para procesar en esta fecha
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {citasFiltradas.map((cita, index) => (
-              <motion.div
-                key={cita.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-all duration-300 overflow-hidden"
-              >
-                <div className="p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                    {/* Paciente */}
-                    <div className="lg:col-span-3">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
-                          <svg
-                            className="w-6 h-6 text-blue-600 dark:text-blue-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                            />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
-                            Paciente
-                          </p>
-                          <p className="font-bold text-gray-900 dark:text-white text-lg truncate">
-                            {cita.paciente.nombre}{" "}
-                            {cita.paciente.apellido_paterno}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                            RUT: {cita.paciente.rut}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Doctor */}
-                    <div className="lg:col-span-3">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl">
-                          <svg
-                            className="w-6 h-6 text-emerald-600 dark:text-emerald-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                            />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide mb-1">
-                            Doctor
-                          </p>
-                          <p className="font-bold text-gray-900 dark:text-white truncate">
-                            Dr. {cita.doctor.nombre}{" "}
-                            {cita.doctor.apellido_paterno}
-                          </p>
+          ) : citasFiltradas.length === 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-16 text-center">
+              <div className="inline-flex p-5 bg-gray-50 dark:bg-gray-700 rounded-full mb-6">
+                <svg
+                  className="w-16 h-16 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                No hay citas pendientes
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400">
+                No se encontraron consultas para procesar en esta fecha
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {citasFiltradas.map((cita, index) => (
+                <motion.div
+                  key={cita.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="group bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md border border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-600 transition-all duration-300 overflow-hidden"
+                >
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                      {/* Paciente */}
+                      <div className="lg:col-span-3">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 rounded-xl">
+                            <svg
+                              className="w-6 h-6 text-blue-600 dark:text-blue-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                              />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
+                              Paciente
+                            </p>
+                            <p className="font-bold text-gray-900 dark:text-white text-lg truncate">
+                              {cita.paciente.nombre}{" "}
+                              {cita.paciente.apellido_paterno}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                              RUT: {cita.paciente.rut}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Especialidad y Precio */}
-                    <div className="lg:col-span-2">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
-                          <svg
-                            className="w-6 h-6 text-purple-600 dark:text-purple-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                            />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1">
-                            Especialidad
-                          </p>
-                          <p className="font-bold text-gray-900 dark:text-white truncate">
-                            {cita.especialidad?.nombre || "Sin especialidad"}
-                          </p>
-                          {cita.precio_especialidad && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <svg
-                                className="w-4 h-4 text-emerald-500"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                              </svg>
-                              <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                                $
-                                {new Intl.NumberFormat("es-CL").format(
-                                  cita.precio_especialidad
-                                )}
-                              </span>
-                            </div>
-                          )}
+                      {/* Doctor */}
+                      <div className="lg:col-span-3">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl">
+                            <svg
+                              className="w-6 h-6 text-emerald-600 dark:text-emerald-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                              />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide mb-1">
+                              Doctor
+                            </p>
+                            <p className="font-bold text-gray-900 dark:text-white truncate">
+                              Dr. {cita.doctor.nombre}{" "}
+                              {cita.doctor.apellido_paterno}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Fecha y Hora */}
-                    <div className="lg:col-span-2">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2.5 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
-                          <svg
-                            className="w-6 h-6 text-amber-600 dark:text-amber-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">
-                            Fecha y Hora
-                          </p>
-                          <p className="font-bold text-gray-900 dark:text-white text-sm">
-                            {formatearFecha(cita.fecha_atencion)}
-                          </p>
+                      {/* Especialidad y Precio */}
+                      <div className="lg:col-span-2">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2.5 bg-purple-50 dark:bg-purple-900/30 rounded-xl">
+                            <svg
+                              className="w-6 h-6 text-purple-600 dark:text-purple-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                              />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1">
+                              Especialidad
+                            </p>
+                            <p className="font-bold text-gray-900 dark:text-white truncate">
+                              {cita.especialidad?.nombre || "Sin especialidad"}
+                            </p>
+                            {cita.precio_especialidad && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <svg
+                                  className="w-4 h-4 text-emerald-500"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                  $
+                                  {new Intl.NumberFormat("es-CL").format(
+                                    cita.precio_especialidad
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Acciones */}
-                    <div className="lg:col-span-2 flex flex-col items-stretch lg:items-end gap-3">
-                      <span className="px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl text-sm font-bold text-center border border-amber-200 dark:border-amber-700">
-                        {cita.estado_actual}
-                      </span>
-                      <button
-                        onClick={() => abrirModalPago(cita)}
-                        className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all font-bold shadow-sm hover:shadow-md flex items-center justify-center gap-2"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                      {/* Fecha y Hora */}
+                      <div className="lg:col-span-2">
+                        <div className="flex items-start gap-3">
+                          <div className="p-2.5 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
+                            <svg
+                              className="w-6 h-6 text-amber-600 dark:text-amber-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide mb-1">
+                              Fecha y Hora
+                            </p>
+                            <p className="font-bold text-gray-900 dark:text-white text-sm">
+                              {formatearFecha(cita.fecha_atencion)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Acciones */}
+                      <div className="lg:col-span-2 flex flex-col items-stretch lg:items-end gap-3">
+                        <span className="px-4 py-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl text-sm font-bold text-center border border-amber-200 dark:border-amber-700">
+                          {cita.estado_actual}
+                        </span>
+                        <button
+                          onClick={() => abrirModalPago(cita)}
+                          className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl transition-all font-bold shadow-sm hover:shadow-md flex items-center justify-center gap-2"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-                          />
-                        </svg>
-                        Procesar Pago
-                      </button>
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                            />
+                          </svg>
+                          Procesar Pago
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
